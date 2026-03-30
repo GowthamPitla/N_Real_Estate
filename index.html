@@ -1,0 +1,1976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOX Intl | Admin Dashboard</title>
+    
+    <script>
+        if (sessionStorage.getItem('toxAdminAuth') !== 'true') {
+            window.location.href = 'public.html';
+        }
+
+        window.handleGlobalSearch = function() {
+            const query = document.getElementById('global-search-input').value.toLowerCase();
+            
+            // Sync with Leads search box and trigger if Leads section is open
+            const leadsSearch = document.getElementById('search-leads-input');
+            if (leadsSearch) {
+                leadsSearch.value = query;
+                if (!document.getElementById('sec-leads').classList.contains('hidden-section')) {
+                    renderLeadsTable();
+                }
+            }
+            
+            // Sync with Properties search box and trigger if Properties section is open
+            const propsSearch = document.getElementById('search-properties-input');
+            if (propsSearch) {
+                propsSearch.value = query;
+                if (!document.getElementById('sec-my-properties').classList.contains('hidden-section')) {
+                    handlePropertiesSearch();
+                }
+            }
+        };
+
+        // REPLACE your existing showSection function with this:
+        function showSection(id) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden-section')); 
+            const targetSection = document.getElementById('sec-' + id); 
+            if (targetSection) { targetSection.classList.remove('hidden-section'); }
+            
+            document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active')); 
+            const btn = document.getElementById('btn-' + id); 
+            if(btn) btn.classList.add('active');
+            
+            document.getElementById('main-scroll-area').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+    
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAo8Y-hREmsHsiBPVCRMFYHP4Mnd7rHJUc",
+            authDomain: "tox-intl.firebaseapp.com",
+            projectId: "tox-intl",
+            storageBucket: "tox-intl.firebasestorage.app",
+            messagingSenderId: "966798205481",
+            appId: "1:966798205481:web:9bbc3e8f82ed49ef52f238"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
+    </script>
+
+    <script>
+        tailwind.config = { 
+            darkMode: 'class', 
+            theme: { 
+                extend: { 
+                    colors: { primary: '#3b82f6', darkBg: '#0f172a', darkCard: '#1e293b' }, 
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } 
+                } 
+            } 
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; background-color: #F8F9FA; transition: background-color 0.3s; }
+        .dark body { background-color: #0f172a; }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .sidebar-item { border-radius: 0.5rem; transition: all 0.2s ease-in-out; font-weight: 500; font-size: 15px; }
+        .sidebar-item:hover { background: #f1f5f9; color: #3b82f6; }
+        .dark .sidebar-item:hover { background: #1e293b; color: #60a5fa; }
+        .sidebar-item.active { background: #eff6ff; color: #3b82f6; font-weight: 600; }
+        .dark .sidebar-item.active { background: #1e293b; color: #60a5fa; }
+        
+        .hidden-section { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        
+        .form-card { background: white; border-radius: 1rem; padding: 2.5rem; margin-bottom: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; }
+        .dark .form-card { background: #1e293b; border-color: #334155; border-width: 1px; box-shadow: none; }
+        label { display: block; font-weight: 600; margin-bottom: 0.25rem; font-size: 13px; color: #475569; }
+        .dark label { color: #94a3b8; }
+        .required-star { color: #ef4444; margin-left: 2px; }
+        
+        .input-style { width: 100%; padding: 0.6rem 0.8rem; border-radius: 0.375rem; background: #ffffff; border: 1px solid #e2e8f0; outline: none; font-size: 13px; transition: all 0.2s; color: #1e293b; box-shadow: 0 1px 2px rgba(0,0,0,0.01); }
+        .input-style:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        .dark .input-style { background: #0f172a; border-color: #334155; color: #ffffff; }
+        .dark .input-style:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); background: #1e293b; }
+        
+        .pill-label { padding: 0.5rem 1.25rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-block; color: #475569; background: white; }
+        .dark .pill-label { border-color: #334155; color: #cbd5e1; background: #0f172a; }
+        .pill-radio input:checked + .pill-label { background-color: #eff6ff; color: #3b82f6; border-color: #3b82f6; font-weight: 600; }
+        .dark .pill-radio input:checked + .pill-label { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        
+        .round-pill-label { width: 40px; height: 40px; border-radius: 0.5rem; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s; font-size: 14px; display: flex; align-items: center; justify-content: center; color: #475569; background: white; }
+        .dark .round-pill-label { border-color: #334155; color: #cbd5e1; background: #0f172a; }
+        .pill-radio input:checked + .round-pill-label { background-color: #eff6ff; color: #3b82f6; border-color: #3b82f6; font-weight: 600; }
+        .dark .pill-radio input:checked + .round-pill-label { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        
+        .custom-dropdown-content { display: none; }
+        .custom-dropdown.active .custom-dropdown-content { display: block; }
+    </style>
+</head>
+<body class="text-slate-900 dark:text-slate-100 relative">
+
+    <div id="toast-container" class="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
+
+    <div id="manage-labels-modal" class="fixed inset-0 bg-black/50 z-[9999] hidden items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-[#1e293b] w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all border border-slate-200 dark:border-slate-700">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-[#0f172a]">
+                <h3 class="font-bold text-lg text-slate-800 dark:text-white">Manage Labels</h3>
+                <button onclick="toggleManageLabelsModal()" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label>Create New Label</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="text" id="new-label-name" class="input-style flex-1" placeholder="Label name...">
+                        <select id="new-label-color" class="input-style w-24 px-2">
+                            <option value="blue">Blue</option>
+                            <option value="green">Green</option>
+                            <option value="orange">Orange</option>
+                            <option value="red">Red</option>
+                            <option value="purple">Purple</option>
+                            <option value="slate">Gray</option>
+                        </select>
+                        <button type="button" onclick="addNewLabel()" class="bg-primary text-white px-4 py-2 rounded-md font-bold hover:bg-blue-600 transition"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="border-t border-slate-100 dark:border-slate-700 pt-4 mt-2">
+                    <label class="mb-3">Existing Labels</label>
+                    <div id="existing-labels-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] text-right">
+                <button type="button" onclick="toggleManageLabelsModal()" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-5 py-2 rounded-md font-bold hover:bg-slate-300 transition">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="create-prospect-modal" class="fixed inset-0 bg-black/50 z-[9999] hidden items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-[#1e293b] w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform transition-all border border-slate-200 dark:border-slate-700">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-[#0f172a]">
+                <h3 class="font-bold text-lg text-slate-800 dark:text-white">Create New Prospect</h3>
+                <button onclick="toggleProspectModal()" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <label>Prospect Organization Name</label>
+                <input type="text" id="new-prospect-name" class="input-style mt-1" placeholder="e.g. ToxIntl Corp">
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] flex justify-end gap-3">
+                <button type="button" onclick="toggleProspectModal()" class="bg-transparent text-slate-600 dark:text-slate-400 px-4 py-2 font-bold hover:text-slate-800 transition">Cancel</button>
+                <button type="button" onclick="saveNewProspect()" class="bg-primary text-white px-5 py-2 rounded-md font-bold hover:bg-blue-600 transition shadow-sm">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="create-source-modal" class="fixed inset-0 bg-black/50 z-[9999] hidden items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-[#1e293b] w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform transition-all border border-slate-200 dark:border-slate-700">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-[#0f172a]">
+                <h3 class="font-bold text-lg text-slate-800 dark:text-white">Create Lead Source</h3>
+                <button onclick="toggleSourceModal()" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <label>New Lead Source</label>
+                <input type="text" id="new-source-name" class="input-style mt-1" placeholder="e.g. Marketing Campaign">
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] flex justify-end gap-3">
+                <button type="button" onclick="toggleSourceModal()" class="bg-transparent text-slate-600 dark:text-slate-400 px-4 py-2 font-bold hover:text-slate-800 transition">Cancel</button>
+                <button type="button" onclick="saveNewSource()" class="bg-primary text-white px-5 py-2 rounded-md font-bold hover:bg-blue-600 transition shadow-sm">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="create-assignee-modal" class="fixed inset-0 bg-black/50 z-[9999] hidden items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-[#1e293b] w-full max-w-sm rounded-xl shadow-2xl overflow-hidden transform transition-all border border-slate-200 dark:border-slate-700">
+            <div class="p-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-[#0f172a]">
+                <h3 class="font-bold text-lg text-slate-800 dark:text-white">Create New Assignee</h3>
+                <button onclick="toggleAssigneeModal()" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <label>Assignee Name</label>
+                <input type="text" id="new-assignee-name" class="input-style mt-1" placeholder="e.g. John Doe">
+            </div>
+            <div class="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] flex justify-end gap-3">
+                <button type="button" onclick="toggleAssigneeModal()" class="bg-transparent text-slate-600 dark:text-slate-400 px-4 py-2 font-bold hover:text-slate-800 transition">Cancel</button>
+                <button type="button" onclick="saveNewAssignee()" class="bg-primary text-white px-5 py-2 rounded-md font-bold hover:bg-blue-600 transition shadow-sm">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-ui" class="flex h-screen">
+        
+        <aside class="w-[280px] bg-white dark:bg-[#1e293b] border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen z-50 shrink-0 transition-colors">
+            <div class="flex items-center gap-3 p-6 shrink-0">
+                <div class="w-10 h-10 bg-black dark:bg-white rounded-xl flex items-center justify-center text-white dark:text-black font-bold text-xl transition-colors">T</div>
+                <h1 class="text-[22px] font-extrabold tracking-tight uppercase text-slate-900 dark:text-white">TOX INTL</h1>
+            </div>
+
+            <nav class="space-y-6 flex-1 overflow-y-auto px-6 py-2 hide-scrollbar">
+                <button onclick="showSection('home')" id="btn-home" class="sidebar-item active w-full flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400">
+                    <i class="fas fa-th-large w-5 text-center text-lg"></i> <span>Dashboard</span>
+                </button>
+
+                <div class="space-y-1">
+                    <p class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">CRM</p>
+                    <button onclick="showSection('leads')" id="btn-leads" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400">
+                        <i class="fas fa-user-check w-5 text-center text-lg"></i> <span>Leads</span>
+                    </button>
+                    <button onclick="showSection('client-reviews')" id="btn-client-reviews" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400">
+                        <i class="far fa-comment-alt w-5 text-center text-lg"></i> <span>Reviews</span>
+                    </button>
+                </div>
+
+                <div class="space-y-1">
+                    <p class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Listing</p>
+                    <button onclick="showSection('my-properties')" id="btn-my-properties" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400">
+                        <i class="fas fa-list-ul w-5 text-center text-lg"></i> <span>My Properties</span>
+                    </button>
+                    <button onclick="prepareAddProperty()" id="btn-add-property" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400">
+                        <i class="fas fa-plus w-5 text-center text-lg"></i> <span>Add New Property</span>
+                    </button>
+                    <button onclick="showSection('reviews')" id="btn-reviews" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 text-slate-600 dark:text-slate-400">
+                        <i class="far fa-comment-alt w-5 text-center text-lg"></i> <span>Reviews</span>
+                    </button>
+                </div>
+
+                <div class="space-y-1 pt-6 border-t border-slate-100 dark:border-slate-800 transition-colors">
+                    <p class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Public Access</p>
+                    <a href="public.html" target="_blank" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 text-primary bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all font-bold">
+                        <i class="fas fa-external-link-alt w-5 text-center text-lg"></i> <span>View Live Website</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="p-6 shrink-0 border-t border-slate-100 dark:border-slate-800 transition-colors">
+                <button onclick="handleLogout()" class="w-full flex items-center gap-4 px-4 py-2 font-bold group text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition">
+                    <div class="w-10 h-10 rounded-full border-2 border-red-500 flex items-center justify-center transition-all group-hover:bg-red-50 dark:group-hover:bg-red-500/10"><i class="fas fa-sign-out-alt"></i></div>
+                    <span class="text-base">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto relative bg-[#F8F9FA] dark:bg-[#0f172a] transition-colors" id="main-scroll-area">
+            
+            <header class="px-6 py-4 flex justify-end items-center sticky top-0 bg-[#F8F9FA]/90 dark:bg-[#0f172a]/90 backdrop-blur-md z-40 border-b border-slate-200 dark:border-slate-800 transition-colors">
+                
+                <div class="flex items-center gap-4 w-full justify-end">
+                    <div class="relative w-full max-w-md hidden md:block">
+                        <input type="text" id="global-search-input" onkeyup="handleGlobalSearch()" placeholder="Global Search (Leads & Properties)..." class="w-full pl-4 pr-10 py-2.5 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-full text-sm outline-none shadow-sm focus:border-primary dark:text-white transition-colors">
+                        <i class="fas fa-search absolute right-4 top-3.5 text-slate-300 dark:text-slate-500"></i>
+                    </div>
+                    <button onclick="prepareAddProperty()" class="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md hover:bg-blue-600 transition-colors shrink-0">
+                        <i class="fas fa-plus text-sm"></i>
+                    </button>
+                    <button onclick="toggleDarkMode()" class="text-slate-400 dark:text-slate-300 text-lg mx-1 hover:text-slate-600 dark:hover:text-white transition-colors shrink-0">
+                        <i id="theme-icon" class="fas fa-moon"></i>
+                    </button>
+                    <div class="flex items-center gap-3 ml-2 shrink-0">
+                        <div class="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm">AD</div>
+                        <span class="text-sm font-bold text-slate-800 dark:text-white hidden xl:block uppercase transition-colors">ADMIN</span>
+                    </div>
+                </div>
+            </header>
+
+            <section id="sec-home" class="p-8 space-y-8 animate-fade-in w-full">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-700 flex justify-between items-center shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-colors">
+                        <div class="flex flex-col">
+                            <p class="text-slate-400 dark:text-slate-500 text-[11px] font-bold uppercase tracking-widest mb-1">All Live Properties</p>
+                            <h3 id="stat-all" class="text-[40px] font-extrabold text-slate-900 dark:text-white leading-none mt-1 transition-colors">0</h3>
+                        </div>
+                        <div class="w-14 h-14 bg-black dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center text-2xl shadow-md transition-colors">
+                            <i class="far fa-building"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-[#1e293b] p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-[0_2px_10px_rgba(0,0,0,0.02)] min-h-[400px] transition-colors">
+                    <h4 class="text-xs font-bold mb-8 uppercase tracking-widest text-slate-400 dark:text-slate-500">Analytics Overview</h4>
+                    <canvas id="propChart" height="80"></canvas>
+                </div>
+            </section>
+
+           <section id="sec-leads" class="hidden-section p-6 w-full">
+                <div class="flex justify-end items-center mb-6">
+                    <h2 class="hidden text-[28px] font-bold text-slate-800 dark:text-white">Leads</h2>
+                    <button onclick="prepareAddLead()" class="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-md font-bold transition shadow-sm flex items-center gap-2">
+                        + Add Lead
+                    </button>
+                </div>
+                
+                <div class="hidden gap-6 border-b border-slate-200 dark:border-slate-700 mb-6 text-sm font-medium text-slate-600 dark:text-slate-400 overflow-x-auto pb-1">
+                    <button class="pb-3 hover:text-slate-800 dark:hover:text-white transition whitespace-nowrap">Today's Activity</button>
+                    <button class="pb-3 border-b-2 border-primary text-primary whitespace-nowrap">All(<span id="tab-all-count">0</span>)</button>
+                </div>
+
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400 font-medium">
+                            <button class="font-bold text-slate-800 dark:text-white flex items-center gap-1"><i class="fas fa-chevron-down"></i> Filters</button>
+                            <button class="hover:text-slate-800 dark:hover:text-white transition flex items-center gap-1"><i class="fas fa-times text-slate-400"></i> Clear All Filters</button>
+                            <button class="hover:text-slate-800 dark:hover:text-white transition flex items-center gap-1"><i class="fas fa-sync-alt text-slate-400"></i> Refresh Filters</button>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <p class="text-xs text-slate-400 mr-1">Applied Filters</p>
+                            <span class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-md text-[11px] font-medium flex items-center gap-2 shadow-sm"><i class="fas fa-times text-slate-400 cursor-pointer"></i> Status: All <i class="fas fa-caret-down ml-1 text-slate-400"></i></span>
+                        </div>
+                    </div>
+                    <div class="relative w-full md:w-64">
+                        <input type="text" id="search-leads-input" onkeyup="renderLeadsTable()" placeholder="Search Leads" class="w-full pl-8 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-sm outline-none focus:border-primary bg-white dark:bg-[#1e293b] text-slate-800 dark:text-white transition shadow-sm">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm w-full">
+                    <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center text-sm text-slate-600 dark:text-slate-400">
+                        <span id="leads-count-top">Showing 0 Leads</span>
+                    </div>
+                    <section id="sec-leads" class="hidden-section p-6 w-full">
+                ...
+                    <div class="overflow-x-auto w-full">
+                        <table class="w-full text-left text-[14px] whitespace-nowrap min-w-[1500px]">
+                            <thead class="bg-slate-50 dark:bg-[#0f172a] text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-700 text-[18px]">
+                                <tr>
+                                    <th class="p-6 w-10"><input type="checkbox" class="rounded border-slate-300"></th>
+                                    <th class="p-6 font-semibold">Contact Name</th>
+                                    <th class="p-6 font-semibold">Organization Name</th>
+                                    <th class="p-6 font-semibold">Email</th>
+                                    <th class="p-6 font-semibold">Phone No.</th>
+                                    <th class="p-6 font-semibold">Stage</th>
+                                    <th class="p-6 font-semibold">Created At <i class="fas fa-arrow-up text-[10px] ml-1"></i></th>
+                                    <th class="p-6 font-bold text-slate-800 dark:text-white">Status</th>
+                                    <th class="p-6 font-semibold">Lead Source</th>
+                                    <th class="p-6 font-semibold">Budget</th>
+                                    <th class="p-6 font-semibold">Subject</th>
+                                    <th class="p-6 font-semibold">Assignee</th>
+                                    <th class="p-6 font-semibold">Follow up Date</th>
+                                    <th class="p-6 font-semibold">Date Closed</th>
+                                    <th class="p-6 font-semibold">Labels</th>
+                                    <th class="p-6 font-semibold text-right sticky right-0 bg-slate-50 dark:bg-[#0f172a]">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leads-table-body" class="divide-y divide-slate-100 dark:divide-slate-700 text-slate-700 dark:text-slate-300">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="lead-pagination-controls" class="flex justify-between items-center px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-[#1e293b]">
+                        </div>
+                </div>
+            </section>
+
+            <section id="sec-add-lead" class="hidden-section p-8 w-full max-w-6xl mx-auto">
+                <div class="flex items-center gap-4 mb-6">
+                    <button type="button" onclick="showSection('leads')" class="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white transition shadow-sm">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2 id="lead-form-title" class="text-[28px] font-bold text-slate-800 dark:text-white">Add Lead</h2>
+                </div>
+
+                <form id="lead-form" onsubmit="submitNewLead(event)" class="space-y-6">
+                    <input type="hidden" id="edit-lead-index" value="-1">
+                    
+                    <div class="form-card">
+                        <p class="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8">Contact Details</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+                            <div>
+                                <label>Contact Name<span class="required-star">*</span></label>
+                                <p class="text-[11px] text-slate-400 mb-2">Full name of the lead contact</p>
+                                <input type="text" id="ld-contact" class="input-style" required>
+                            </div>
+                            
+                            <div class="relative w-full" id="org-dropdown-container">
+                                <label>Prospect Organisation<span class="required-star">*</span></label>
+                                <p class="text-[11px] text-slate-400 mb-2">Company or organisation the lead belongs to</p>
+                                
+                                <div class="input-style cursor-pointer flex justify-between items-center" onclick="toggleOrgDropdown()">
+                                    <span id="org-selected-text" class="text-slate-400">Select or type...</span>
+                                    <i class="fas fa-chevron-down text-slate-400"></i>
+                                </div>
+                                <div id="org-dropdown-menu" class="absolute top-full left-0 w-full bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl mt-1 z-50 hidden flex-col">
+                                    <input type="text" id="org-search" class="p-3 border-b border-slate-100 dark:border-slate-700 bg-transparent outline-none w-full text-sm focus:bg-slate-50 dark:focus:bg-slate-800 transition" placeholder="Search prospects..." onkeyup="filterOrgs()">
+                                    <div id="org-list" class="max-h-48 overflow-y-auto">
+                                        </div>
+                                    <div class="p-3 border-t border-slate-100 dark:border-slate-700 text-primary cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm flex items-center gap-2 transition" onclick="toggleProspectModal()">
+                                        <i class="far fa-plus-square"></i> Create New Prospect
+                                    </div>
+                                </div>
+                                <input type="hidden" id="ld-org" required>
+                            </div>
+
+                            <div>
+                                <label>Email<span class="required-star">*</span></label>
+                                <p class="text-[11px] text-slate-400 mb-2">Email address of the lead</p>
+                                <input type="email" id="ld-email" class="input-style" required>
+                            </div>
+
+                            <div>
+                                <label>Phone<span class="required-star">*</span></label>
+                                <p class="text-[11px] text-slate-400 mb-2">Contact number (10 digits)</p>
+                                <div class="flex">
+                                    <select id="ld-phone-code" class="input-style rounded-r-none border-r-0 w-28 bg-slate-50 dark:bg-slate-800 px-3 cursor-pointer focus:ring-0 text-xs font-medium">
+                                        <option value="+91">IN +91</option>
+                                        <option value="+1">US +1</option>
+                                        <option value="+44">UK +44</option>
+                                        <option value="+971">AE +971</option>
+                                        <option value="+61">AU +61</option>
+                                    </select>
+                                    <input type="tel" id="ld-phone" class="input-style rounded-l-none pl-3" placeholder="9876543210" pattern="[0-9]{10}" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label>Contact Country<span class="required-star">*</span></label>
+                                <p class="text-[11px] text-slate-400 mb-2">Country of the lead</p>
+                                <select id="ld-country" class="input-style cursor-pointer" required>
+                                    <option value="India">India</option>
+                                    <option value="USA">USA</option>
+                                    <option value="UK">United Kingdom</option>
+                                    <option value="UAE">UAE</option>
+                                    <option value="Australia">Australia</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label>Customer City</label>
+                                <p class="text-[11px] text-slate-400 mb-2">City of the lead</p>
+                                <input type="text" id="ld-city" class="input-style">
+                            </div>
+                            
+                            <div class="md:col-span-2">
+                                <label>Designation</label>
+                                <p class="text-[11px] text-slate-400 mb-2">Designation, role or position of the lead</p>
+                                <input type="text" id="ld-designation" class="input-style">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <p class="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-8">Lead Info & Tracking</p>
+                        
+                        <div class="space-y-8">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+                                <div>
+                                    <label>Lead Subject<span class="required-star">*</span></label>
+                                    <p class="text-[11px] text-slate-400 mb-2">Brief 4-5 words on what they're looking for</p>
+                                    <input type="text" id="ld-subject" class="input-style" placeholder="E.g. Mobile App Development" required>
+                                </div>
+                                <div>
+                                    <label>Estimated Budget</label>
+                                    <p class="text-[11px] text-slate-400 mb-2">Projected value of this deal</p>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-2.5 text-slate-500 font-bold">₹</span>
+                                        <input type="text" id="ld-budget" class="input-style pl-8" placeholder="5,00,000" oninput="formatCurrencyInput(this)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label>Additional Description</label>
+                                <p class="text-[11px] text-slate-400 mb-2">Add all additional details, including links that may be helpful</p>
+                                <textarea id="ld-desc" class="input-style" rows="4"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-6">
+                                <div>
+                                    <label>Select Stage<span class="required-star">*</span></label>
+                                    <select id="ld-stage" class="input-style cursor-pointer" required>
+                                        <option value="Open">Open</option>
+                                        <option value="Contacted">Contacted</option>
+                                        <option value="Proposal Sent">Proposal Sent</option>
+                                        <option value="Deal Done">Deal Done</option>
+                                        <option value="Lost">Lost</option>
+                                        <option value="Not Serviceable">Not Serviceable</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="relative w-full" id="source-dropdown-container">
+                                    <label>Lead Source</label>
+                                    <div class="input-style cursor-pointer flex justify-between items-center" onclick="toggleSourceDropdown()">
+                                        <span id="source-selected-text" class="text-slate-400">Select or type...</span>
+                                        <i class="fas fa-chevron-down text-slate-400"></i>
+                                    </div>
+                                    <div id="source-dropdown-menu" class="absolute top-full left-0 w-full bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl mt-1 z-50 hidden flex-col">
+                                        <input type="text" id="source-search" class="p-3 border-b border-slate-100 dark:border-slate-700 bg-transparent outline-none w-full text-sm focus:bg-slate-50 dark:focus:bg-slate-800 transition" placeholder="Search source..." onkeyup="filterSources()">
+                                        <div id="source-list" class="max-h-48 overflow-y-auto">
+                                            </div>
+                                        <div class="p-3 border-t border-slate-100 dark:border-slate-700 text-primary cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm flex items-center gap-2 transition" onclick="toggleSourceModal()">
+                                            <i class="far fa-plus-square"></i> Create new lead source
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="ld-source">
+                                </div>
+
+                                <div class="relative w-full" id="assignee-dropdown-container">
+                                    <label>Assignee</label>
+                                    <div class="input-style cursor-pointer flex justify-between items-center" onclick="toggleAssigneeDropdown()">
+                                        <span id="assignee-selected-text" class="text-slate-400">Select or type...</span>
+                                        <i class="fas fa-chevron-down text-slate-400"></i>
+                                    </div>
+                                    <div id="assignee-dropdown-menu" class="absolute top-full left-0 w-full bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl mt-1 z-50 hidden flex-col">
+                                        <input type="text" id="assignee-search" class="p-3 border-b border-slate-100 dark:border-slate-700 bg-transparent outline-none w-full text-sm focus:bg-slate-50 dark:focus:bg-slate-800 transition" placeholder="Search assignee..." onkeyup="filterAssignees()">
+                                        <div id="assignee-list" class="max-h-48 overflow-y-auto">
+                                            </div>
+                                        <div class="p-3 border-t border-slate-100 dark:border-slate-700 text-primary cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 font-medium text-sm flex items-center gap-2 transition" onclick="toggleAssigneeModal()">
+                                            <i class="far fa-plus-square"></i> Create new assignee
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="ld-assignee">
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+                                <div>
+                                    <label>Follow-up Date</label>
+                                    <input type="date" id="ld-followup" class="input-style cursor-pointer">
+                                </div>
+                                <div>
+                                    <label>Date Closed</label>
+                                    <input type="date" id="ld-dateclosed" class="input-style cursor-pointer">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label>Labels</label>
+                                <div class="relative custom-dropdown mt-2" id="labels-dropdown-container">
+                                    <div class="input-style cursor-pointer min-h-[42px] flex items-center justify-between" onclick="toggleLabels()">
+                                        <div id="labels-selected-display" class="flex flex-wrap gap-1 items-center">
+                                            <span class="text-slate-500 text-sm">Select labels...</span>
+                                        </div>
+                                        <i class="fas fa-chevron-down text-slate-400 text-xs shrink-0 ml-2"></i>
+                                    </div>
+                                    <div class="custom-dropdown-content absolute top-full left-0 w-full bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl mt-1 z-50 overflow-hidden">
+                                        <div class="p-2 border-b border-slate-100 dark:border-slate-700">
+                                            <input type="text" id="label-search" onkeyup="filterLabels()" placeholder="Search labels..." class="w-full bg-transparent border-none outline-none text-sm px-2 py-1">
+                                        </div>
+                                        <div id="labels-checkbox-list" class="max-h-60 overflow-y-auto p-2 space-y-1">
+                                            </div>
+                                        <div onclick="toggleManageLabelsModal(); toggleLabels()" class="p-3.5 border-t border-slate-100 dark:border-slate-700 text-center text-primary dark:text-blue-400 text-sm font-bold cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                                            <i class="fas fa-pencil-alt mr-1"></i> Edit Labels
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 pb-20">
+                        <button type="submit" id="lead-submit-btn" class="bg-primary text-white px-12 py-3.5 rounded-lg font-bold shadow-md hover:bg-blue-600 transition">Add Lead</button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="sec-my-properties" class="hidden-section p-8 w-full">
+                <div class="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-700 shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden transition-colors mb-12">
+                    <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-4 transition-colors">
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white transition-colors">My Properties (Table View)</h3>
+                        <div class="flex items-center gap-3">
+                            <div class="relative w-64 hidden sm:block">
+                                <input type="text" id="search-properties-input" onkeyup="handlePropertiesSearch()" placeholder="Search for anything..." class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:border-primary dark:text-white transition-colors">
+                                <i class="fas fa-search absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                            </div>
+                            <div class="relative">
+                                <select id="filter-properties-select" onchange="handlePropertiesSearch()" class="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-600 pl-8 pr-8 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 outline-none shadow-sm appearance-none cursor-pointer">
+                                    <option value="all">All Status</option>
+                                    <option value="approved">Active</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="purchased">Sold</option>
+                                    <option value="draft">Deactivated</option>
+                                </select>
+                                <i class="fas fa-filter absolute left-3 top-3 text-slate-400 text-xs pointer-events-none"></i>
+                                <i class="fas fa-chevron-down absolute right-3 top-3 text-slate-400 text-xs pointer-events-none"></i>
+                            </div>
+                            <button class="bg-black dark:bg-white text-white dark:text-black px-5 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition shadow-sm"><i class="far fa-envelope mr-2"></i>Bulk Email</button>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full overflow-hidden">
+                        <table class="w-full text-left text-sm table-fixed">
+                            <thead class="bg-slate-50 dark:bg-[#0f172a] text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-700 transition-colors">
+                                <tr>
+                                    <th class="py-4 px-3 font-bold text-[10px] uppercase tracking-wider w-[24%]">Property & Client Name</th>
+                                    <th class="py-4 px-3 font-bold text-[10px] uppercase tracking-wider w-[16%]">Status</th>
+                                    <th class="py-4 px-3 font-bold text-[10px] uppercase tracking-wider w-[20%]">Contact Details</th>
+                                    <th class="py-4 px-3 font-bold text-[10px] uppercase tracking-wider w-[12%]">Submitted By</th>
+                                    <th class="py-4 px-3 font-bold text-[10px] uppercase tracking-wider w-[10%]">Date</th>
+                                    <th class="py-4 px-3 font-bold text-[10px] uppercase tracking-wider text-right w-[18%]">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="approvals-table-body" class="divide-y divide-slate-100 dark:divide-slate-700 text-slate-700 dark:text-slate-300 bg-white dark:bg-[#1e293b] transition-colors">
+                            </tbody>
+                        </table>
+                        <div id="pagination-controls" class="flex justify-between items-center px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-[#1e293b]"></div>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-slate-800 dark:text-white transition-colors mb-6">My Properties (Grid View)</h3>
+                <div id="properties-container" class="grid grid-cols-1 md:grid-cols-3 gap-8"></div>
+            </section>
+
+            <section id="sec-client-reviews" class="hidden-section p-8 w-full flex items-center justify-center h-[70vh]">
+                <div class="text-center"><i class="far fa-comment-alt text-6xl text-slate-200 dark:text-slate-700 mb-4"></i><h2 class="text-2xl font-bold text-slate-600 dark:text-slate-400">Client Reviews Coming Soon</h2></div>
+            </section>
+            
+            <section id="sec-reviews" class="hidden-section p-8 w-full flex items-center justify-center h-[70vh]">
+                <div class="text-center"><i class="far fa-star text-6xl text-slate-200 dark:text-slate-700 mb-4"></i><h2 class="text-2xl font-bold text-slate-600 dark:text-slate-400">Property Reviews Coming Soon</h2></div>
+            </section>
+
+            <section id="sec-add-property" class="hidden-section p-8 w-full max-w-6xl mx-auto">
+                <form id="property-form" onsubmit="submitProperty(event)" class="space-y-6">
+                    <input type="hidden" id="edit-index" value="-1">
+                    
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-6 uppercase tracking-widest text-slate-400 dark:text-slate-500">Overview</h3>
+                        <div class="space-y-5">
+                            <div><label>Property Title<span class="required-star">*</span></label><input type="text" id="prop-title" class="input-style" placeholder="Your Property Name" required></div>
+                            <div><label>Description<span class="required-star">*</span></label><textarea id="prop-desc" class="input-style" rows="4" placeholder="Write about property details, highlights, etc..." required></textarea></div>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label>Price (₹)<span class="required-star">*</span></label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-2.5 text-slate-500 font-bold">₹</span>
+                                        <input type="text" id="prop-price" class="input-style pl-8" placeholder="50,00,000" oninput="formatCurrencyInput(this)" required>
+                                    </div>
+                                </div>
+                                <div><label>Yearly Tax Rate<span class="required-star">*</span></label><input type="text" id="prop-tax" class="input-style" placeholder="Tax Rate"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label>Contact No.<span class="required-star">*</span></label>
+                                    <div class="flex">
+                                        <select id="prop-phone-code" class="input-style rounded-r-none border-r-0 w-28 bg-slate-50 dark:bg-slate-800 px-3 cursor-pointer focus:ring-0 text-xs font-medium">
+                                            <option value="+91">IN +91</option>
+                                            <option value="+1">US +1</option>
+                                            <option value="+44">UK +44</option>
+                                            <option value="+971">AE +971</option>
+                                            <option value="+61">AU +61</option>
+                                        </select>
+                                        <input type="tel" id="prop-contact" class="input-style rounded-l-none pl-3" placeholder="9876543210" pattern="[0-9]{10}" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                                    </div>
+                                </div>
+                                <div><label>Mail ID<span class="required-star">*</span></label><input type="email" id="prop-email" class="input-style" placeholder="Ex: owner@example.com" required></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-6 uppercase tracking-widest text-slate-400 dark:text-slate-500">Specific Details</h3>
+                        <div class="space-y-5">
+                            <div>
+                                <label>I want to <span class="required-star">*</span></label>
+                                <div class="flex flex-wrap gap-3">
+                                    <label class="pill-radio"><input type="radio" name="want_to" value="Sell" class="hidden" checked><div class="pill-label">Sell</div></label>
+                                    <label class="pill-radio"><input type="radio" name="want_to" value="Rent" class="hidden"><div class="pill-label">Rent</div></label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label>Property Type <span class="required-star">*</span></label>
+                                <div class="flex flex-wrap gap-3">
+                                    <label class="pill-radio"><input type="radio" name="prop_type_pill" value="Apartment" class="hidden" checked><div class="pill-label">Apartment</div></label>
+                                    <label class="pill-radio"><input type="radio" name="prop_type_pill" value="Independent House/Villa" class="hidden"><div class="pill-label">Independent House/Villa</div></label>
+                                    <label class="pill-radio"><input type="radio" name="prop_type_pill" value="Independent Floor" class="hidden"><div class="pill-label">Independent Floor</div></label>
+                                    <label class="pill-radio"><input type="radio" name="prop_type_pill" value="Row House" class="hidden"><div class="pill-label">Row House</div></label>
+                                    <label class="pill-radio"><input type="radio" name="prop_type_pill" value="Pent House" class="hidden"><div class="pill-label">Pent House</div></label>
+                                    <label class="pill-radio"><input type="radio" name="prop_type_pill" value="Studio" class="hidden"><div class="pill-label">Studio</div></label>
+                                    <label class="pill-radio"><input type="radio" name="prop_type_pill" value="Duplex" class="hidden"><div class="pill-label">Duplex</div></label>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label>Configuration Type <span class="required-star">*</span></label>
+                                <div class="flex flex-wrap gap-3">
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="1 RK" class="hidden"><div class="pill-label">1 RK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="1 BHK" class="hidden"><div class="pill-label">1 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="1.5 BHK" class="hidden"><div class="pill-label">1.5 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="2 BHK" class="hidden"><div class="pill-label">2 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="2.5 BHK" class="hidden"><div class="pill-label">2.5 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="3 BHK" class="hidden"><div class="pill-label">3 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="3.5 BHK" class="hidden"><div class="pill-label">3.5 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="4 BHK" class="hidden"><div class="pill-label">4 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="4.5 BHK" class="hidden"><div class="pill-label">4.5 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="5 BHK" class="hidden"><div class="pill-label">5 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="6 BHK" class="hidden"><div class="pill-label">6 BHK</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="Studio" class="hidden"><div class="pill-label">Studio</div></label>
+                                    <label class="pill-radio"><input type="radio" name="config_type" value="Other" class="hidden"><div class="pill-label">Other</div></label>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div>
+                                    <label>Furnish Type <span class="required-star">*</span></label>
+                                    <div class="flex flex-wrap gap-3">
+                                        <label class="pill-radio"><input type="radio" name="furnish_type" value="Unfurnished" class="hidden" checked><div class="pill-label">Unfurnished</div></label>
+                                        <label class="pill-radio"><input type="radio" name="furnish_type" value="Semi Furnished" class="hidden"><div class="pill-label">Semi Furnished</div></label>
+                                        <label class="pill-radio"><input type="radio" name="furnish_type" value="Fully Furnished" class="hidden"><div class="pill-label">Fully Furnished</div></label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label>Water Supply <span class="required-star">*</span></label>
+                                    <div class="flex flex-wrap gap-3">
+                                        <label class="pill-radio"><input type="radio" name="water_supply" value="Corporation" class="hidden" checked><div class="pill-label">Corporation</div></label>
+                                        <label class="pill-radio"><input type="radio" name="water_supply" value="Borewell" class="hidden"><div class="pill-label">Borewell</div></label>
+                                        <label class="pill-radio"><input type="radio" name="water_supply" value="Both" class="hidden"><div class="pill-label">Both</div></label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div>
+                                    <label>Age of Building <span class="required-star">*</span></label>
+                                    <div class="flex flex-wrap gap-3">
+                                        <label class="pill-radio"><input type="radio" name="age_building" value="Newly Constructed" class="hidden" checked><div class="pill-label">Newly Constructed</div></label>
+                                        <label class="pill-radio"><input type="radio" name="age_building" value="1-5 Years" class="hidden"><div class="pill-label">1-5 Years</div></label>
+                                        <label class="pill-radio"><input type="radio" name="age_building" value="5-10 Years" class="hidden"><div class="pill-label">5-10 Years</div></label>
+                                        <label class="pill-radio"><input type="radio" name="age_building" value="10+ Years" class="hidden"><div class="pill-label">10+ Years</div></label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label>Non-Veg Allowed <span class="required-star">*</span></label>
+                                    <div class="flex flex-wrap gap-3">
+                                        <label class="pill-radio"><input type="radio" name="non_veg" value="Yes" class="hidden" checked><div class="pill-label">Yes</div></label>
+                                        <label class="pill-radio"><input type="radio" name="non_veg" value="No" class="hidden"><div class="pill-label">No</div></label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div>
+                                    <label>Parking Type <span class="required-star">*</span></label>
+                                    <div class="flex flex-wrap gap-3">
+                                        <label class="pill-radio"><input type="radio" name="parking_type" value="Car" class="hidden" checked><div class="pill-label">Car</div></label>
+                                        <label class="pill-radio"><input type="radio" name="parking_type" value="Bike" class="hidden"><div class="pill-label">Bike</div></label>
+                                        <label class="pill-radio"><input type="radio" name="parking_type" value="Bike and Car" class="hidden"><div class="pill-label">Bike and Car</div></label>
+                                        <label class="pill-radio"><input type="radio" name="parking_type" value="None" class="hidden"><div class="pill-label">None</div></label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label>Parking Count <span class="required-star">*</span></label>
+                                    <div class="flex flex-wrap gap-3">
+                                        <label class="pill-radio"><input type="radio" name="parking_pill" value="0" class="hidden" checked><div class="round-pill-label">0</div></label>
+                                        <label class="pill-radio"><input type="radio" name="parking_pill" value="1" class="hidden"><div class="round-pill-label">1</div></label>
+                                        <label class="pill-radio"><input type="radio" name="parking_pill" value="2" class="hidden"><div class="round-pill-label">2</div></label>
+                                        <label class="pill-radio"><input type="radio" name="parking_pill" value="3" class="hidden"><div class="round-pill-label">3</div></label>
+                                        <label class="pill-radio"><input type="radio" name="parking_pill" value="3+" class="hidden"><div class="round-pill-label">3+</div></label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div>
+                                    <label>Facing <span class="required-star">*</span></label>
+                                    <div class="flex flex-wrap gap-3">
+                                        <label class="pill-radio"><input type="radio" name="facing_pill" value="East" class="hidden" checked><div class="pill-label">East</div></label>
+                                        <label class="pill-radio"><input type="radio" name="facing_pill" value="West" class="hidden"><div class="pill-label">West</div></label>
+                                        <label class="pill-radio"><input type="radio" name="facing_pill" value="North" class="hidden"><div class="pill-label">North</div></label>
+                                        <label class="pill-radio"><input type="radio" name="facing_pill" value="South" class="hidden"><div class="pill-label">South</div></label>
+                                        <label class="pill-radio"><input type="radio" name="facing_pill" value="North-East" class="hidden"><div class="pill-label">North-East</div></label>
+                                        <label class="pill-radio"><input type="radio" name="facing_pill" value="North-West" class="hidden"><div class="pill-label">North-West</div></label>
+                                        <label class="pill-radio"><input type="radio" name="facing_pill" value="South-East" class="hidden"><div class="pill-label">South-East</div></label>
+                                        <label class="pill-radio"><input type="radio" name="facing_pill" value="South-West" class="hidden"><div class="pill-label">South-West</div></label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label>Maintenance Charges</label>
+                                    <input type="text" id="prop-maintenance" class="input-style" placeholder="Ex: 2000" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-0">Select Amenities</h3>
+                            <button type="button" onclick="toggleAllAmenities()" class="text-primary text-sm font-bold hover:underline transition">Select All</button>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-4 gap-x-4">
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="EV Charging Station" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">EV Charging Station</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Power Back Up" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Power Back Up</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Security" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Security</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Gym" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Gym</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Indoor Games" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Indoor Games</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Outdoor Games" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Outdoor Games</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="PlayGround" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">PlayGround</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Club House" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Club House</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Jogging Track" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Jogging Track</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Visitor Parking" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Visitor Parking</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="A/C & Heating" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">A/C & Heating</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Garages" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Garages</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Swimming Pool" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Swimming Pool</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Parking" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Parking</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Lake View" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Lake View</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Garden" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Garden</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Disabled Access" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Disabled Access</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Pet Friendly" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Pet Friendly</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Ceiling Height" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Ceiling Height</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Outdoor Shower" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Outdoor Shower</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Refrigerator" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Refrigerator</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Fireplace" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Fireplace</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Wifi" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Wifi</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="TV Cable" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">TV Cable</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Barbeque" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Barbeque</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Laundry" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Laundry</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Dryer" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Dryer</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Lawn" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Lawn</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Elevator" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-600 dark:bg-slate-700"> <span class="text-sm text-slate-600 dark:text-slate-300">Elevator</span></label>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-6 uppercase tracking-widest text-slate-400 dark:text-slate-500">Listing Details</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div><label>Size in ft<span class="required-star">*</span></label><input type="text" id="prop-size" class="input-style" placeholder="Ex: 3210" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div><label>Carpet Area<span class="required-star">*</span></label><input type="text" id="prop-carpet-area" class="input-style" placeholder="Ex: 2800" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div><label>Bedrooms<span class="required-star">*</span></label><select id="prop-beds" class="input-style num-dropdown"></select></div>
+                            <div><label>Bathrooms<span class="required-star">*</span></label><select id="prop-baths" class="input-style num-dropdown"></select></div>
+                            <div><label>Balconies<span class="required-star">*</span></label><select id="prop-balcony" class="input-style num-dropdown"></select></div>
+                            <div><label>Kitchens<span class="required-star">*</span></label><select id="prop-kitchens" class="input-style num-dropdown"></select></div>
+                            <div><label>Garages</label><select id="prop-garages" class="input-style num-dropdown"></select></div>
+                            <div><label>Garage Size</label><input type="text" id="prop-garage-size" class="input-style" placeholder="Ex: 1230" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+                            <div><label>Year Built<span class="required-star">*</span></label><input type="text" id="prop-year" class="input-style" placeholder="Type Year" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div><label>Floor No<span class="required-star">*</span></label><input type="text" id="prop-floors" class="input-style" placeholder="Ex: 2" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div><label>No. of Floors in Bldg</label><input type="text" id="prop-total-floors" class="input-style" placeholder="Ex: 5" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-4 uppercase tracking-widest text-slate-400 dark:text-slate-500">1. Cover Page Image (Optional)</h3>
+                        <label class="bg-slate-50 dark:bg-[#0f172a] border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition group">
+                            <i class="fas fa-image text-3xl text-slate-300 dark:text-slate-600 group-hover:text-primary transition mb-2"></i>
+                            <span class="font-bold text-slate-600 dark:text-slate-300">Upload Cover Image</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="handleCoverUpload(event)">
+                        </label>
+                        <div id="cover-preview-container" class="mt-6 hidden">
+                            <div class="relative h-48 w-full md:w-1/2 lg:w-1/3 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-slate-100 dark:bg-[#0f172a]">
+                                <img id="cover-img-element" src="" class="w-full h-full object-cover">
+                                <button type="button" onclick="removeCover()" class="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="form-card" style="margin-bottom: 0;">
+                            <h3 class="text-[11px] font-bold mb-4 uppercase tracking-widest text-slate-400 dark:text-slate-500">2. Floor Plans (Optional)</h3>
+                            <label class="bg-slate-50 dark:bg-[#0f172a] border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition group">
+                                <i class="fas fa-map text-3xl text-slate-300 dark:text-slate-600 group-hover:text-primary transition mb-2"></i>
+                                <span class="font-bold text-slate-600 dark:text-slate-300">Upload Floor Plans</span>
+                                <input type="file" accept="image/*,application/pdf" multiple class="hidden" onchange="handleFloorPlanUpload(event)">
+                            </label>
+                            <div id="floor-plan-list" class="mt-8 grid grid-cols-2 gap-4"></div>
+                        </div>
+
+                        <div class="form-card" style="margin-bottom: 0;">
+                            <h3 class="text-[11px] font-bold mb-4 uppercase tracking-widest text-slate-400 dark:text-slate-500">3. Brochure (Optional)</h3>
+                            <label class="bg-slate-50 dark:bg-[#0f172a] border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition group">
+                                <i class="fas fa-file-pdf text-3xl text-slate-300 dark:text-slate-600 group-hover:text-primary transition mb-2"></i>
+                                <span class="font-bold text-slate-600 dark:text-slate-300">Upload PDF</span>
+                                <input type="file" accept="application/pdf" class="hidden" onchange="handleBrochureUpload(event)">
+                            </label>
+                            <div id="brochure-preview-container" class="mt-6 hidden">
+                                <div class="relative p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] flex items-center justify-between group shadow-sm">
+                                    <div class="flex items-center gap-3 overflow-hidden">
+                                        <i class="fas fa-file-pdf text-red-500 text-3xl"></i>
+                                        <span id="brochure-filename" class="text-sm font-bold truncate text-slate-700 dark:text-slate-300">brochure.pdf</span>
+                                    </div>
+                                    <button type="button" onclick="removeBrochure()" class="bg-red-50 dark:bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white w-8 h-8 rounded-full flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-4 uppercase tracking-widest text-slate-400 dark:text-slate-500">4. Property Photos & Videos</h3>
+                        <label class="bg-slate-50 dark:bg-[#0f172a] border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition group">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-slate-300 dark:text-slate-600 group-hover:text-primary transition mb-2"></i>
+                            <span class="font-bold text-slate-600 dark:text-slate-300">Upload Gallery Media</span>
+                            <input type="file" accept="image/*,video/*" multiple class="hidden" onchange="handleStoreUpload(event)">
+                        </label>
+                        <div id="upload-list" class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-6 uppercase tracking-widest text-slate-400 dark:text-slate-500">Location</h3>
+                        <div class="space-y-6">
+                            <div>
+                                <label>Full Address (or Coordinates)<span class="required-star">*</span></label>
+                                <input type="text" id="prop-addr" class="input-style" placeholder="Ex: 45 Cyberabad, Tech Park  OR  17.35, 78.39" onkeyup="updateMap()" required>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div><label>Country<span class="required-star">*</span></label><input list="countries" id="prop-country" class="input-style" placeholder="Select Country" onchange="updateMap()" onkeyup="updateMap()" required><datalist id="countries"><option value="India"><option value="USA"></datalist></div>
+                                <div><label>City<span class="required-star">*</span></label><input type="text" id="prop-city" class="input-style" placeholder="Select City" onkeyup="updateMap()" required></div>
+                                <div><label>State<span class="required-star">*</span></label><input type="text" id="prop-state" class="input-style" placeholder="Select State" onkeyup="updateMap()" required></div>
+                            </div>
+                            <div><label>Map Location Link</label><input type="text" id="prop-map-link" class="input-style" placeholder="Paste custom Google Maps link here (optional)" onkeyup="updateMap()"></div>
+                            <div class="w-full h-72 bg-slate-200 dark:bg-[#0f172a] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-inner relative mt-4"><iframe id="map-preview" width="100%" height="100%" frameborder="0" style="border:0;" allowfullscreen="" aria-hidden="false" tabindex="0" src="about:blank"></iframe></div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 pb-20">
+                        <button type="submit" id="submit-btn" class="bg-primary text-white px-12 py-3.5 rounded-lg font-bold shadow-md hover:bg-blue-600 transition">Submit to Cloud</button>
+                        <button type="button" onclick="showSection('home')" class="bg-white dark:bg-[#1e293b] text-slate-700 dark:text-white border border-slate-200 dark:border-slate-700 px-12 py-3.5 rounded-lg font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        let myProperties = [];
+        let myLeads = []; 
+        let currentLeadPage = 1;
+        const leadsPerPage = 6; 
+        let currentPage = 1;
+        const itemsPerPage = 7;
+        let currentCover = null; let currentCoverFile = null; let currentFloorPlans = []; let currentBrochure = null; let currentBrochureName = ""; let currentBrochureFile = null; let currentUploads = []; let draggedItemIndex = null;
+
+        // Custom Toast Implementation
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const bgClass = type === 'success' ? 'bg-slate-800 dark:bg-white text-white dark:text-slate-900' : 'bg-red-500 text-white';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle text-white';
+            
+            toast.className = `${bgClass} px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-10 opacity-0 transition-all duration-300 font-bold text-sm`;
+            toast.innerHTML = `<i class="fas ${icon} text-lg"></i> ${message}`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 10);
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // --- Currency Auto Formatter ---
+        window.formatCurrencyInput = function(input) {
+            let val = input.value.replace(/[^0-9]/g, '');
+            if (val) {
+                input.value = parseInt(val, 10).toLocaleString('en-IN');
+            } else {
+                input.value = '';
+            }
+        };
+
+        // --- Prospect / Organization Custom Dropdown Logic ---
+        let availableOrgs = ['ToxIntl', 'Tech Corp', 'Global Solutions'];
+
+        function toggleOrgDropdown() {
+            const menu = document.getElementById('org-dropdown-menu');
+            const isHidden = menu.classList.contains('hidden');
+            document.querySelectorAll('.custom-dropdown-content, #org-dropdown-menu, #source-dropdown-menu, #assignee-dropdown-menu').forEach(el => {
+                el.classList.add('hidden'); el.classList.remove('active', 'flex');
+            });
+            if (isHidden) { menu.classList.remove('hidden'); menu.classList.add('flex'); document.getElementById('org-search').focus(); renderOrgsList(); }
+        }
+
+        function filterOrgs() { renderOrgsList(document.getElementById('org-search').value.toLowerCase()); }
+
+        function renderOrgsList(query = '') {
+            const list = document.getElementById('org-list');
+            const filtered = availableOrgs.filter(org => org.toLowerCase().includes(query));
+            list.innerHTML = filtered.map(org => `
+                <div class="flex justify-between items-center px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm text-slate-700 dark:text-slate-300 transition" onclick="selectOrg('${org}')">
+                    <span>${org}</span>
+                    <button onclick="deleteOrg('${org}', event)" class="text-slate-400 hover:text-red-500 transition px-2"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            `).join('');
+            if (filtered.length === 0) list.innerHTML = `<div class="px-4 py-2.5 text-sm text-slate-400 italic">No matches found</div>`;
+        }
+
+        window.deleteOrg = function(org, e) {
+            e.stopPropagation();
+            availableOrgs = availableOrgs.filter(o => o !== org);
+            if(document.getElementById('ld-org').value === org) {
+                document.getElementById('ld-org').value = '';
+                document.getElementById('org-selected-text').innerText = 'Select or type...';
+            }
+            renderOrgsList(document.getElementById('org-search').value.toLowerCase());
+        };
+
+        function selectOrg(orgName) {
+            document.getElementById('ld-org').value = orgName;
+            document.getElementById('org-selected-text').innerText = orgName;
+            document.getElementById('org-selected-text').classList.remove('text-slate-400');
+            document.getElementById('org-selected-text').classList.add('text-slate-800', 'dark:text-white', 'font-medium');
+            document.getElementById('org-dropdown-menu').classList.add('hidden');
+        }
+
+        function toggleProspectModal() {
+            document.getElementById('org-dropdown-menu').classList.add('hidden');
+            const modal = document.getElementById('create-prospect-modal');
+            modal.classList.toggle('hidden'); modal.classList.toggle('flex');
+            document.getElementById('new-prospect-name').value = '';
+            setTimeout(() => document.getElementById('new-prospect-name').focus(), 100);
+        }
+
+        function saveNewProspect() {
+            const newName = document.getElementById('new-prospect-name').value.trim();
+            if(newName) {
+                if(!availableOrgs.includes(newName)) { availableOrgs.push(newName); showToast('New Prospect added successfully!'); }
+                selectOrg(newName);
+            }
+            toggleProspectModal();
+        }
+
+        // --- Lead Source Custom Dropdown Logic ---
+        let availableSources = ['Manual Entry', 'Website Form', 'Referral', 'Social Media', 'Cold Call'];
+
+        function toggleSourceDropdown() {
+            const menu = document.getElementById('source-dropdown-menu');
+            const isHidden = menu.classList.contains('hidden');
+            document.querySelectorAll('.custom-dropdown-content, #org-dropdown-menu, #source-dropdown-menu, #assignee-dropdown-menu').forEach(el => {
+                el.classList.add('hidden'); el.classList.remove('active', 'flex');
+            });
+            if (isHidden) { menu.classList.remove('hidden'); menu.classList.add('flex'); document.getElementById('source-search').focus(); renderSourcesList(); }
+        }
+
+        function filterSources() { renderSourcesList(document.getElementById('source-search').value.toLowerCase()); }
+
+        function renderSourcesList(query = '') {
+            const list = document.getElementById('source-list');
+            const filtered = availableSources.filter(s => s.toLowerCase().includes(query));
+            list.innerHTML = filtered.map(src => `
+                <div class="flex justify-between items-center px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm text-slate-700 dark:text-slate-300 transition" onclick="selectSource('${src}')">
+                    <span>${src}</span>
+                    <button onclick="deleteSource('${src}', event)" class="text-slate-400 hover:text-red-500 transition px-2"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            `).join('');
+            if (filtered.length === 0) list.innerHTML = `<div class="px-4 py-2.5 text-sm text-slate-400 italic">No matches found</div>`;
+        }
+
+        window.deleteSource = function(src, e) {
+            e.stopPropagation();
+            availableSources = availableSources.filter(s => s !== src);
+            if(document.getElementById('ld-source').value === src) {
+                document.getElementById('ld-source').value = '';
+                document.getElementById('source-selected-text').innerText = 'Select or type...';
+            }
+            renderSourcesList(document.getElementById('source-search').value.toLowerCase());
+        };
+
+        function selectSource(srcName) {
+            document.getElementById('ld-source').value = srcName;
+            document.getElementById('source-selected-text').innerText = srcName;
+            document.getElementById('source-selected-text').classList.remove('text-slate-400');
+            document.getElementById('source-selected-text').classList.add('text-slate-800', 'dark:text-white', 'font-medium');
+            document.getElementById('source-dropdown-menu').classList.add('hidden');
+        }
+
+        function toggleSourceModal() {
+            document.getElementById('source-dropdown-menu').classList.add('hidden');
+            const modal = document.getElementById('create-source-modal');
+            modal.classList.toggle('hidden'); modal.classList.toggle('flex');
+            document.getElementById('new-source-name').value = '';
+            setTimeout(() => document.getElementById('new-source-name').focus(), 100);
+        }
+
+        function saveNewSource() {
+            const newName = document.getElementById('new-source-name').value.trim();
+            if(newName) {
+                if(!availableSources.includes(newName)) { availableSources.push(newName); showToast('New Source added successfully!'); }
+                selectSource(newName);
+            }
+            toggleSourceModal();
+        }
+
+        // --- Assignee Custom Dropdown Logic ---
+        let availableAssignees = ['Unassigned', 'Admin', 'Sales Rep 1', 'Sales Rep 2'];
+
+        function toggleAssigneeDropdown() {
+            const menu = document.getElementById('assignee-dropdown-menu');
+            const isHidden = menu.classList.contains('hidden');
+            document.querySelectorAll('.custom-dropdown-content, #org-dropdown-menu, #source-dropdown-menu, #assignee-dropdown-menu').forEach(el => {
+                el.classList.add('hidden'); el.classList.remove('active', 'flex');
+            });
+            if (isHidden) { menu.classList.remove('hidden'); menu.classList.add('flex'); document.getElementById('assignee-search').focus(); renderAssigneesList(); }
+        }
+
+        function filterAssignees() { renderAssigneesList(document.getElementById('assignee-search').value.toLowerCase()); }
+
+        function renderAssigneesList(query = '') {
+            const list = document.getElementById('assignee-list');
+            const filtered = availableAssignees.filter(a => a.toLowerCase().includes(query));
+            list.innerHTML = filtered.map(assignee => `
+                <div class="flex justify-between items-center px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm text-slate-700 dark:text-slate-300 transition" onclick="selectAssignee('${assignee}')">
+                    <span>${assignee}</span>
+                    <button onclick="deleteAssignee('${assignee}', event)" class="text-slate-400 hover:text-red-500 transition px-2"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            `).join('');
+            if (filtered.length === 0) list.innerHTML = `<div class="px-4 py-2.5 text-sm text-slate-400 italic">No matches found</div>`;
+        }
+
+        window.deleteAssignee = function(assignee, e) {
+            e.stopPropagation();
+            availableAssignees = availableAssignees.filter(a => a !== assignee);
+            if(document.getElementById('ld-assignee').value === assignee) {
+                document.getElementById('ld-assignee').value = '';
+                document.getElementById('assignee-selected-text').innerText = 'Select or type...';
+            }
+            renderAssigneesList(document.getElementById('assignee-search').value.toLowerCase());
+        };
+
+        function selectAssignee(assigneeName) {
+            document.getElementById('ld-assignee').value = assigneeName;
+            document.getElementById('assignee-selected-text').innerText = assigneeName;
+            document.getElementById('assignee-selected-text').classList.remove('text-slate-400');
+            document.getElementById('assignee-selected-text').classList.add('text-slate-800', 'dark:text-white', 'font-medium');
+            document.getElementById('assignee-dropdown-menu').classList.add('hidden');
+        }
+
+        function toggleAssigneeModal() {
+            document.getElementById('assignee-dropdown-menu').classList.add('hidden');
+            const modal = document.getElementById('create-assignee-modal');
+            modal.classList.toggle('hidden'); modal.classList.toggle('flex');
+            document.getElementById('new-assignee-name').value = '';
+            setTimeout(() => document.getElementById('new-assignee-name').focus(), 100);
+        }
+
+        function saveNewAssignee() {
+            const newName = document.getElementById('new-assignee-name').value.trim();
+            if(newName) {
+                if(!availableAssignees.includes(newName)) { availableAssignees.push(newName); showToast('New Assignee added successfully!'); }
+                selectAssignee(newName);
+            }
+            toggleAssigneeModal();
+        }
+
+        // --- Labels Logic ---
+        let allLabels = [
+            { name: 'Hot', color: 'orange' },
+            { name: 'Warm', color: 'yellow' },
+            { name: 'Cold', color: 'blue' },
+            { name: 'Customer', color: 'slate' },
+            { name: 'Not Qualified', color: 'pink' },
+            { name: 'Qualified', color: 'emerald' }
+        ];
+
+        window.toggleLabels = function() {
+            document.querySelectorAll('#org-dropdown-menu, #source-dropdown-menu, #assignee-dropdown-menu').forEach(el => {
+                el.classList.add('hidden'); el.classList.remove('flex');
+            });
+            const container = document.getElementById('labels-dropdown-container');
+            container.classList.toggle('active');
+            if(container.classList.contains('active')) renderLabelsList();
+        }
+
+        function filterLabels() { renderLabelsList(document.getElementById('label-search').value.toLowerCase()); }
+
+        function renderLabelsList(query = '') {
+            const list = document.getElementById('labels-checkbox-list');
+            const filtered = allLabels.filter(l => l.name.toLowerCase().includes(query));
+            const currentChecked = Array.from(document.querySelectorAll('input[name="ld-label"]:checked')).map(cb => cb.value);
+
+            list.innerHTML = filtered.map(l => {
+                const isChecked = currentChecked.includes(l.name) ? 'checked' : '';
+                return `
+                <label class="flex items-center gap-3 p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer rounded transition">
+                    <input type="checkbox" name="ld-label" value="${l.name}" onchange="updateSelectedLabelsDisplay()" class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" ${isChecked}>
+                    <span class="px-3.5 py-1 rounded-full text-[11px] font-bold text-${l.color}-700 bg-${l.color}-50 border border-transparent dark:bg-${l.color}-900/30 dark:text-${l.color}-400">${l.name}</span>
+                </label>`;
+            }).join('');
+        }
+
+        function updateSelectedLabelsDisplay() {
+            const selected = Array.from(document.querySelectorAll('input[name="ld-label"]:checked')).map(cb => cb.value);
+            const display = document.getElementById('labels-selected-display');
+            
+            if(selected.length === 0) {
+                display.innerHTML = `<span class="text-slate-500 text-sm">Select labels...</span>`;
+            } else {
+                display.innerHTML = selected.map(val => {
+                    const lInfo = allLabels.find(l => l.name === val) || { color: 'slate' };
+                    return `<span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold text-${lInfo.color}-700 bg-${lInfo.color}-50 dark:bg-${lInfo.color}-900/30 dark:text-${lInfo.color}-400">${val}</span>`;
+                }).join('');
+            }
+        }
+
+        function toggleManageLabelsModal() {
+            const modal = document.getElementById('manage-labels-modal');
+            modal.classList.toggle('hidden'); modal.classList.toggle('flex');
+            renderExistingLabels();
+        }
+
+        function addNewLabel() {
+            const name = document.getElementById('new-label-name').value.trim();
+            const color = document.getElementById('new-label-color').value;
+            if(name) {
+                if(!allLabels.find(l => l.name.toLowerCase() === name.toLowerCase())) {
+                    allLabels.push({ name, color });
+                    document.getElementById('new-label-name').value = '';
+                    renderExistingLabels();
+                    renderLabelsList();
+                    showToast('Label Created!');
+                } else {
+                    showToast('Label already exists.', 'error');
+                }
+            }
+        }
+
+        window.deleteLabel = function(name) {
+            allLabels = allLabels.filter(l => l.name !== name);
+            renderExistingLabels();
+            renderLabelsList();
+            updateSelectedLabelsDisplay();
+        };
+
+        function renderExistingLabels() {
+            const list = document.getElementById('existing-labels-list');
+            list.innerHTML = allLabels.map(l => `
+                <div class="flex justify-between items-center bg-white dark:bg-[#0f172a] p-2 rounded border border-slate-100 dark:border-slate-700 mb-2">
+                    <span class="px-3 py-1 rounded-full text-[11px] font-bold text-${l.color}-700 bg-${l.color}-50 dark:bg-${l.color}-900/30 dark:text-${l.color}-400">${l.name}</span>
+                    <button onclick="deleteLabel('${l.name}')" class="text-slate-400 hover:text-red-500 text-xs px-2"><i class="fas fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // Close dropdowns if clicked outside
+        document.addEventListener('click', function(event) {
+            const labelsDropdown = document.getElementById('labels-dropdown-container');
+            const orgDropdown = document.getElementById('org-dropdown-container');
+            const sourceDropdown = document.getElementById('source-dropdown-container');
+            const assigneeDropdown = document.getElementById('assignee-dropdown-container');
+            
+            if (labelsDropdown && !labelsDropdown.contains(event.target)) { labelsDropdown.classList.remove('active'); }
+            if (orgDropdown && !orgDropdown.contains(event.target)) { document.getElementById('org-dropdown-menu').classList.add('hidden'); document.getElementById('org-dropdown-menu').classList.remove('flex'); }
+            if (sourceDropdown && !sourceDropdown.contains(event.target)) { document.getElementById('source-dropdown-menu').classList.add('hidden'); document.getElementById('source-dropdown-menu').classList.remove('flex'); }
+            if (assigneeDropdown && !assigneeDropdown.contains(event.target)) { document.getElementById('assignee-dropdown-menu').classList.add('hidden'); document.getElementById('assignee-dropdown-menu').classList.remove('flex'); }
+        });
+
+        window.toggleAllAmenities = function() {
+            const checkboxes = document.querySelectorAll('.amenity-cb');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        };
+
+        function toggleDarkMode() { 
+            document.documentElement.classList.toggle('dark'); 
+            const icon = document.getElementById('theme-icon');
+            icon.className = document.documentElement.classList.contains('dark') ? 'fas fa-sun text-yellow-400' : 'fas fa-moon text-slate-400';
+        }
+
+        document.querySelectorAll('.num-dropdown').forEach(el => { let options = ''; for(let i=0; i<=10; i++) options += `<option value="${i}">${i}</option>`; options += `<option value="10+">10+</option>`; el.innerHTML = options; });
+        document.querySelectorAll('input[name="config_type"]').forEach(radio => { radio.addEventListener('change', (e) => { const val = e.target.value; const bedsDropdown = document.getElementById('prop-beds'); const kitchensDropdown = document.getElementById('prop-kitchens'); const match = val.match(/^(\d+)/); if (match) { bedsDropdown.value = match[1]; kitchensDropdown.value = "1"; } else if (val === 'Studio') { bedsDropdown.value = "1"; kitchensDropdown.value = "1"; } else { bedsDropdown.value = "0"; kitchensDropdown.value = "0"; } }); });
+
+        window.onload = async () => { initChart(); await fetchLiveProperties(); await fetchLiveLeads(); };
+
+        function handleLogout() { sessionStorage.removeItem('toxAdminAuth'); window.location.href = 'public.html'; }
+
+        // --- LEADS SECTION LOGIC ---
+        async function fetchLiveLeads() {
+            if (!window.db) { setTimeout(fetchLiveLeads, 200); return; } // Added Retry Logic
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "leads"));
+                myLeads = []; 
+                querySnapshot.forEach((doc) => { 
+                    const data = doc.data();
+                    if(data.orgName && !availableOrgs.includes(data.orgName)) availableOrgs.push(data.orgName);
+                    if(data.source && !availableSources.includes(data.source)) availableSources.push(data.source);
+                    if(data.assignee && !availableAssignees.includes(data.assignee)) availableAssignees.push(data.assignee);
+                    myLeads.push({ docId: doc.id, ...data }); 
+                });
+                renderLeadsTable();
+            } catch (error) { console.error("Error fetching leads:", error); }
+        }
+
+        async function fetchLiveProperties() {
+            if (!window.db) { setTimeout(fetchLiveProperties, 200); return; } // Added Retry Logic
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "properties"));
+                myProperties = []; querySnapshot.forEach((doc) => { myProperties.push({ id: doc.id, ...doc.data() }); });
+                renderProperties(); handlePropertiesSearch(); 
+            } catch (error) { console.error("Error fetching live properties:", error); }
+        }
+
+
+        window.renderLeadsTable = function() {
+            const searchQ = document.getElementById('search-leads-input').value.toLowerCase();
+            const filtered = myLeads.filter(l => 
+                (l.contactName || "").toLowerCase().includes(searchQ) || 
+                (l.orgName || "").toLowerCase().includes(searchQ) || 
+                (l.email || "").toLowerCase().includes(searchQ) ||
+                (l.subject || "").toLowerCase().includes(searchQ)
+            );
+            
+            const totalPages = Math.ceil(filtered.length / leadsPerPage) || 1;
+            if(currentLeadPage > totalPages) currentLeadPage = totalPages;
+
+            const startIndex = (currentLeadPage - 1) * leadsPerPage;
+            const endIndex = startIndex + leadsPerPage;
+            const paginatedLeads = filtered.slice(startIndex, endIndex);
+
+            const showingStart = filtered.length > 0 ? startIndex + 1 : 0;
+            const showingEnd = Math.min(endIndex, filtered.length);
+
+            document.getElementById('tab-all-count').innerText = filtered.length;
+            document.getElementById('leads-count-top').innerText = `Showing ${showingStart} to ${showingEnd} of ${filtered.length} Leads`;
+
+            const tbody = document.getElementById('leads-table-body');
+            
+            if(filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="16" class="p-8 text-center text-slate-400">No leads found. Click "+ Add Lead" to create one.</td></tr>`;
+                renderLeadPagination(0, 0, 0);
+                return;
+            }
+
+            tbody.innerHTML = paginatedLeads.map((l, slicedIndex) => {
+                const globalIndex = myLeads.findIndex(item => item.docId === l.docId);
+                
+                const labelsHtml = (l.labels || []).map(val => {
+                    const lInfo = allLabels.find(lbl => lbl.name === val) || { color: 'slate' };
+                    return `<span class="inline-block mr-1 mb-1 px-2 py-0.5 rounded text-[9px] font-bold text-${lInfo.color}-700 bg-${lInfo.color}-50 dark:bg-${lInfo.color}-900/30 dark:text-${lInfo.color}-400">${val}</span>`;
+                }).join('');
+
+                return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition border-b border-slate-100 dark:border-slate-700/50">
+                    <td class="p-6"><input type="checkbox" class="rounded border-slate-300"></td>
+                    <td class="p-6 text-slate-900 dark:text-white font-medium">${l.contactName || '-'}</td>
+                    <td class="p-6">${l.orgName || '-'}</td>
+                    <td class="p-6 text-primary underline decoration-primary/50 cursor-pointer">${l.email || '-'}</td>
+                    <td class="p-6">${l.phone || '-'}</td>
+                    <td class="p-6"><span class="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs">${l.stage || '-'}</span></td>
+                    <td class="p-6 text-slate-500">${(l.createdAt || '').replace('\n', ' ')}</td>
+                    <td class="p-6 text-slate-900 dark:text-white font-medium">${l.status || '-'}</td>
+                    <td class="p-6">${l.source || 'Manual'}</td>
+                    <td class="p-6 font-bold text-emerald-600 dark:text-emerald-400">${l.budget ? '₹'+l.budget : '-'}</td>
+                    <td class="p-6 truncate max-w-[150px]" title="${l.subject || '-'}">${l.subject || '-'}</td>
+                    <td class="p-6">${l.assignee || 'Unassigned'}</td>
+                    <td class="p-6">${l.followupDate || '-'}</td>
+                    <td class="p-6">${l.dateClosed || '-'}</td>
+                    <td class="p-6 w-48 whitespace-normal">${labelsHtml || '-'}</td>
+                    <td class="p-6 text-right sticky right-0 bg-white dark:bg-[#1e293b] shadow-[-5px_0_10px_rgba(0,0,0,0.02)]">
+                        <button onclick="editLead(${globalIndex})" class="text-blue-500 hover:text-blue-700 transition text-sm mr-3" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                        <button onclick="deleteLead('${l.docId}')" class="text-slate-300 hover:text-red-500 transition text-lg" title="Delete"><i class="far fa-trash-alt"></i></button>
+                    </td>
+                </tr>
+            `}).join('');
+
+            renderLeadPagination(filtered.length, showingStart, showingEnd);
+        }
+
+        function renderLeadPagination(totalFiltered, showingStart, showingEnd) {
+            const container = document.getElementById('lead-pagination-controls');
+            if(!container) return;
+            
+            const totalPages = Math.ceil(totalFiltered / leadsPerPage) || 1;
+            
+            let html = `
+                <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Showing ${showingStart} to ${showingEnd} of ${totalFiltered} Leads
+                </span>
+                <div class="flex items-center gap-1">
+                    <button onclick="changeLeadPage(${currentLeadPage - 1})" class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition ${currentLeadPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${currentLeadPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left text-[10px]"></i>
+                    </button>
+            `;
+
+            for(let p = 1; p <= totalPages; p++) {
+                html += `
+                    <button onclick="changeLeadPage(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition ${currentLeadPage === p ? 'bg-primary text-white border border-primary shadow-sm' : 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}">
+                        ${p}
+                    </button>
+                `;
+            }
+
+            html += `
+                    <button onclick="changeLeadPage(${currentLeadPage + 1})" class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition ${currentLeadPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${currentLeadPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right text-[10px]"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        window.changeLeadPage = function(page) {
+            const searchQ = document.getElementById('search-leads-input').value.toLowerCase();
+            const filtered = myLeads.filter(l => 
+                (l.contactName || "").toLowerCase().includes(searchQ) || 
+                (l.orgName || "").toLowerCase().includes(searchQ) || 
+                (l.email || "").toLowerCase().includes(searchQ) ||
+                (l.subject || "").toLowerCase().includes(searchQ)
+            );
+            const totalPages = Math.ceil(filtered.length / leadsPerPage) || 1;
+            if(page < 1 || page > totalPages) return;
+            currentLeadPage = page;
+            renderLeadsTable();
+        };
+
+        window.submitNewLead = async function(e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('lead-submit-btn');
+            submitBtn.innerText = "Saving..."; submitBtn.disabled = true;
+            
+            try {
+                const contactName = document.getElementById('ld-contact').value;
+                const country = document.getElementById('ld-country').value;
+                const city = document.getElementById('ld-city').value;
+                const orgName = document.getElementById('ld-org').value;
+                const email = document.getElementById('ld-email').value;
+                
+                const phoneCode = document.getElementById('ld-phone-code').value;
+                const phoneStr = document.getElementById('ld-phone').value;
+                const phone = phoneStr ? `${phoneCode} ${phoneStr}` : "";
+                
+                const designation = document.getElementById('ld-designation').value;
+                const subject = document.getElementById('ld-subject').value;
+                const budget = document.getElementById('ld-budget').value;
+                const desc = document.getElementById('ld-desc').value;
+                const stage = document.getElementById('ld-stage').value;
+                const source = document.getElementById('ld-source').value || 'Manual Entry';
+                const assignee = document.getElementById('ld-assignee').value || 'Unassigned';
+                const followupDate = document.getElementById('ld-followup').value;
+                const dateClosed = document.getElementById('ld-dateclosed').value;
+                
+                const selectedLabels = Array.from(document.querySelectorAll('input[name="ld-label"]:checked')).map(cb => cb.value);
+
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = now.toLocaleDateString();
+                
+                const leadData = {
+                    contactName, country, city, orgName, email, phone, designation, subject, 
+                    budget, description: desc, stage, source, assignee, 
+                    followupDate, dateClosed,
+                    createdAt: `${dateStr} ${timeStr}`,
+                    status: "New",
+                    labels: selectedLabels,
+                    timestamp: now.toISOString()
+                };
+
+                const index = parseInt(document.getElementById('edit-lead-index').value);
+
+                if (index === -1) { 
+                    await window.addDoc(window.collection(window.db, "leads"), leadData); 
+                    showToast("Lead added successfully!");
+                } else { 
+                    const docId = myLeads[index].docId; 
+                    if(docId) { 
+                        const docRef = window.doc(window.db, "leads", docId); 
+                        await window.updateDoc(docRef, leadData); 
+                        showToast("Lead updated successfully!");
+                    }
+                }
+
+                await fetchLiveLeads();
+                showSection('leads');
+            } catch(e) {
+                console.error("Error saving lead:", e);
+                showToast("Error saving lead.", "error");
+            } finally {
+                submitBtn.innerText = "Add Lead"; submitBtn.disabled = false;
+            }
+        };
+
+        window.deleteLead = async function(docId) {
+            if(confirm("Are you sure you want to permanently delete this lead?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, "leads", docId));
+                    showToast("Lead deleted successfully!");
+                    await fetchLiveLeads();
+                } catch(e) {
+                    showToast("Error deleting lead.", "error");
+                }
+            }
+        };
+
+        window.editLead = function(i) {
+            const l = myLeads[i];
+            try {
+                document.getElementById('ld-contact').value = l.contactName || '';
+                document.getElementById('ld-country').value = l.country || 'India';
+                document.getElementById('ld-city').value = l.city || '';
+                document.getElementById('ld-email').value = l.email || '';
+                
+                // Dropdowns setups
+                if(l.orgName) selectOrg(l.orgName);
+                else { document.getElementById('ld-org').value = ''; document.getElementById('org-selected-text').innerText = 'Select or type...'; }
+
+                if(l.source) selectSource(l.source);
+                else { document.getElementById('ld-source').value = ''; document.getElementById('source-selected-text').innerText = 'Select or type...'; }
+
+                if(l.assignee) selectAssignee(l.assignee);
+                else { document.getElementById('ld-assignee').value = ''; document.getElementById('assignee-selected-text').innerText = 'Select or type...'; }
+
+                document.getElementById('ld-designation').value = l.designation || '';
+                document.getElementById('ld-subject').value = l.subject || '';
+                document.getElementById('ld-budget').value = l.budget || '';
+                document.getElementById('ld-desc').value = l.description || '';
+                document.getElementById('ld-stage').value = l.stage || 'Open';
+                document.getElementById('ld-followup').value = l.followupDate || '';
+                document.getElementById('ld-dateclosed').value = l.dateClosed || '';
+
+                if (l.phone && l.phone !== '-') {
+                    const parts = l.phone.split(' ');
+                    if(parts.length > 1) {
+                        document.getElementById('ld-phone-code').value = parts[0];
+                        document.getElementById('ld-phone').value = parts.slice(1).join(' ');
+                    } else {
+                        document.getElementById('ld-phone').value = l.phone;
+                    }
+                } else {
+                    document.getElementById('ld-phone').value = '';
+                }
+
+                document.querySelectorAll('input[name="ld-label"]').forEach(cb => cb.checked = false);
+                if(l.labels) {
+                    l.labels.forEach(val => {
+                        let cb = document.querySelector(`input[name="ld-label"][value="${val}"]`);
+                        if(cb) cb.checked = true;
+                    });
+                }
+                updateSelectedLabelsDisplay();
+
+                document.getElementById('edit-lead-index').value = i;
+                document.getElementById('lead-submit-btn').innerText = "Update Lead";
+                document.getElementById('lead-form-title').innerText = "Edit Lead";
+                
+            } catch(e) { console.error("Error setting up edit lead form:", e); } 
+            finally { showSection('add-lead'); }
+        };
+
+        window.prepareAddLead = function() {
+            document.getElementById('lead-form').reset();
+            document.getElementById('edit-lead-index').value = "-1";
+            document.getElementById('lead-submit-btn').innerText = "Add Lead";
+            document.getElementById('lead-form-title').innerText = "Add Lead";
+            
+            document.getElementById('org-selected-text').innerText = "Select or type...";
+            document.getElementById('org-selected-text').classList.add('text-slate-400');
+            document.getElementById('source-selected-text').innerText = "Select or type...";
+            document.getElementById('source-selected-text').classList.add('text-slate-400');
+            document.getElementById('assignee-selected-text').innerText = "Select or type...";
+            document.getElementById('assignee-selected-text').classList.add('text-slate-400');
+            
+            document.querySelectorAll('input[name="ld-label"]').forEach(cb => cb.checked = false);
+            updateSelectedLabelsDisplay();
+            showSection('add-lead');
+        }
+
+        // --- PROPERTIES SECTION LOGIC ---
+        async function fetchLiveProperties() {
+            if (!window.db) return;
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "properties"));
+                myProperties = []; querySnapshot.forEach((doc) => { myProperties.push({ id: doc.id, ...doc.data() }); });
+                renderProperties(); handlePropertiesSearch(); 
+            } catch (error) { console.error("Error fetching live properties:", error); }
+        }
+
+        window.handlePropertiesSearch = function() {
+            const searchVal = document.getElementById('search-properties-input').value.toLowerCase();
+            const filterVal = document.getElementById('filter-properties-select').value;
+            
+            let filtered = myProperties;
+            
+            if(searchVal) {
+                filtered = filtered.filter(p => 
+                    (p.title || "").toLowerCase().includes(searchVal) || 
+                    (p.address || "").toLowerCase().includes(searchVal) ||
+                    (p.mailId || "").toLowerCase().includes(searchVal) ||
+                    (p.contactNo || "").toLowerCase().includes(searchVal)
+                );
+            }
+            if(filterVal !== 'all') {
+                filtered = filtered.filter(p => p.status === filterVal);
+            }
+            currentPage = 1;
+            renderApprovalsTable(filtered);
+        };
+
+        function renderApprovalsTable(filteredProperties = myProperties) {
+            const tbody = document.getElementById('approvals-table-body');
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedProperties = filteredProperties.slice(startIndex, endIndex);
+
+            tbody.innerHTML = paginatedProperties.map((p, slicedIndex) => {
+                const globalIndex = myProperties.findIndex(item => item.id === p.id);
+                
+                const isPending = p.status === 'pending'; 
+                const isPurchased = p.status === 'purchased'; 
+                const isDraft = p.status === 'draft';
+                const isDeleteReq = p.status === 'delete_requested';
+
+                let statusClass = 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'; 
+                let statusText = 'Active';
+
+                if (isPending) { statusClass = 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400'; statusText = 'Pending Approval'; }
+                if (isPurchased) { statusClass = 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400'; statusText = 'Sold / Purchased'; }
+                if (isDraft) { statusClass = 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'; statusText = 'Draft / Unlived'; }
+                if (isDeleteReq) { statusClass = 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'; statusText = 'Deletion Requested'; }
+
+                let actions = '';
+                if (isDeleteReq) {
+                    actions += `<button onclick="deleteProperty(${globalIndex})" class="text-red-500 hover:text-red-700 font-bold flex items-center transition text-[11px] mr-3"><i class="fas fa-check mr-1"></i> Approve Delete</button>`;
+                    actions += `<button onclick="changePropertyStatus('${p.id}', 'approved')" class="text-slate-500 hover:text-slate-700 font-bold flex items-center transition text-[11px] mr-2"><i class="fas fa-times mr-1"></i> Reject</button>`;
+                } else if (isPending) { 
+                    actions += `<button onclick="changePropertyStatus('${p.id}', 'approved')" class="text-green-500 hover:text-green-700 font-bold flex items-center transition text-[11px] mr-2"><i class="fas fa-check-circle mr-1"></i> Approve</button>`; 
+                } else if (isDraft || isPurchased) { 
+                    actions += `<button onclick="changePropertyStatus('${p.id}', 'approved')" class="text-green-500 hover:text-green-700 font-bold flex items-center transition text-[11px] mr-2"><i class="fas fa-redo mr-1"></i> Publish</button>`; 
+                } else { 
+                    actions += `<button onclick="changePropertyStatus('${p.id}', 'draft')" class="text-orange-500 hover:text-orange-700 font-bold flex items-center transition text-[11px] mr-3"><i class="fas fa-eye-slash mr-1"></i> Deactivate</button>`; 
+                    actions += `<button onclick="changePropertyStatus('${p.id}', 'purchased')" class="text-purple-500 hover:text-purple-700 font-bold flex items-center transition text-[11px] mr-2"><i class="fas fa-tag mr-1"></i> Sold</button>`; 
+                }
+
+                return `<tr class="hover:bg-slate-50 dark:bg-slate-800/50 transition group border-b border-slate-100 dark:border-slate-800/50">
+                    <td class="py-3 px-3 overflow-hidden">
+                        <div class="flex items-center gap-3 w-full">
+                            <img src="${p.image || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-lg object-cover shadow-sm border border-slate-200 dark:border-slate-700 shrink-0">
+                            <div class="overflow-hidden flex-1">
+                                <p class="font-bold text-slate-900 dark:text-white text-xs truncate w-full max-w-[160px] xl:max-w-[200px]" title="${p.title}">${p.title}</p>
+                                <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate w-full max-w-[160px]">ID: ${p.id.substring(0,8)}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3 px-3 overflow-hidden">
+                        <span class="px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider ${statusClass} inline-block truncate max-w-full">${statusText}</span>
+                    </td>
+                    <td class="py-3 px-3 overflow-hidden">
+                        <div class="overflow-hidden w-full">
+                            <p class="text-slate-600 dark:text-slate-300 font-medium text-[11px] mb-1 flex items-center truncate w-full max-w-[160px]" title="${p.contactNo}"><i class="fas fa-phone-alt text-slate-400 text-[9px] mr-1.5 shrink-0"></i> ${p.contactNo}</p>
+                            <p class="text-slate-500 dark:text-slate-400 text-[11px] flex items-center truncate w-full max-w-[160px]" title="${p.mailId}"><i class="fas fa-envelope text-slate-400 text-[9px] mr-1.5 shrink-0"></i> ${p.mailId}</p>
+                        </div>
+                    </td>
+                    <td class="py-3 px-3 text-slate-700 dark:text-slate-300 font-bold text-xs overflow-hidden">
+                        <div class="flex items-center gap-2 w-full truncate">
+                            <div class="w-6 h-6 rounded bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 text-[10px] border border-slate-200 dark:border-slate-600 shrink-0">${p.submittedBy === 'admin' ? 'A' : 'U'}</div>
+                            ${p.submittedBy === 'admin' ? 'Admin' : 'User'}
+                        </div>
+                    </td>
+                    <td class="py-3 px-3 text-slate-500 dark:text-slate-400 text-[11px] font-medium overflow-hidden">
+                        <span class="truncate block w-full">${new Date(p.timestamp || Date.now()).toLocaleDateString()}</span>
+                    </td>
+                    <td class="py-3 px-3 overflow-hidden">
+                        <div class="flex items-center justify-end gap-1 w-full flex-wrap xl:flex-nowrap">
+                            ${actions}
+                            ${!isDeleteReq ? `<button onclick="deleteProperty(${globalIndex})" class="text-slate-300 hover:text-red-500 transition text-sm ml-1"><i class="far fa-trash-alt"></i></button>` : `<div class="w-3"></div>`}
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+            
+            renderPagination(filteredProperties.length);
+        }
+
+        function renderPagination(totalFiltered) {
+            const container = document.getElementById('pagination-controls');
+            if(!container) return;
+            
+            const totalPages = Math.ceil(totalFiltered / itemsPerPage) || 1;
+            
+            let html = `
+                <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Showing ${(currentPage - 1) * itemsPerPage + (totalFiltered > 0 ? 1 : 0)} to ${Math.min(currentPage * itemsPerPage, totalFiltered)} of ${totalFiltered} entries
+                </span>
+                <div class="flex items-center gap-1">
+                    <button onclick="changePage(${currentPage - 1})" class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left text-[10px]"></i>
+                    </button>
+            `;
+
+            for(let p = 1; p <= totalPages; p++) {
+                html += `
+                    <button onclick="changePage(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition ${currentPage === p ? 'bg-primary text-white border border-primary shadow-sm' : 'border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}">
+                        ${p}
+                    </button>
+                `;
+            }
+
+            html += `
+                    <button onclick="changePage(${currentPage + 1})" class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right text-[10px]"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+
+        window.changePage = function(page) {
+            const searchVal = document.getElementById('search-properties-input').value.toLowerCase();
+            const filterVal = document.getElementById('filter-properties-select').value;
+            
+            let filtered = myProperties;
+            if(searchVal) {
+                filtered = filtered.filter(p => 
+                    (p.title || "").toLowerCase().includes(searchVal) || 
+                    (p.address || "").toLowerCase().includes(searchVal) ||
+                    (p.mailId || "").toLowerCase().includes(searchVal) ||
+                    (p.contactNo || "").toLowerCase().includes(searchVal)
+                );
+            }
+            if(filterVal !== 'all') {
+                filtered = filtered.filter(p => p.status === filterVal);
+            }
+
+            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+            if(page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderApprovalsTable(filtered);
+        };
+
+        async function changePropertyStatus(docId, newStatus) {
+            let msg = 'Change property status?';
+            if(newStatus === 'approved') msg = 'Approve this property/action and make it live?';
+            if(newStatus === 'draft') msg = 'Deactivate this property? It will be hidden from the live website.';
+            if(newStatus === 'purchased') msg = 'Mark this property as Sold? It will show a SOLD OUT badge.';
+
+            if(confirm(msg)) { 
+                try { 
+                    const docRef = window.doc(window.db, "properties", docId); 
+                    await window.updateDoc(docRef, { status: newStatus }); 
+                    showToast('Status updated successfully!'); 
+                    await fetchLiveProperties(); 
+                } catch(e) { 
+                    showToast("Error updating status.", "error"); 
+                } 
+            }
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden-section')); 
+            const targetSection = document.getElementById('sec-' + id); 
+            if (targetSection) { targetSection.classList.remove('hidden-section'); }
+            
+            document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active')); 
+            const btn = document.getElementById('btn-' + id); 
+            if(btn) btn.classList.add('active');
+            
+            let displayTitle = id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); 
+            if (id === 'add-property') displayTitle = 'Add Property'; 
+            else if (id === 'add-lead') displayTitle = 'Add Lead'; 
+            else if (id === 'leads') displayTitle = 'Leads'; 
+            else if (id === 'home') displayTitle = 'Home'; 
+            
+            document.getElementById('page-title').innerText = displayTitle; 
+            document.getElementById('main-scroll-area').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updateMap() {
+            let addr = document.getElementById('prop-addr').value.trim(); 
+            const city = document.getElementById('prop-city').value.trim(); 
+            const state = document.getElementById('prop-state').value.trim(); 
+            const country = document.getElementById('prop-country').value.trim(); 
+            const mapLinkField = document.getElementById('prop-map-link');
+            const mapFrame = document.getElementById('map-preview');
+            
+            // Ignore if user typed a raw http link in the address field
+            if (addr.includes('http')) { addr = ''; } 
+            
+            const queryParts = [addr, city, state, country].filter(Boolean); 
+            const query = queryParts.join(', '); 
+            
+            // Check if the user is currently typing inside the Link field manually
+            const isEditingLink = document.activeElement === mapLinkField;
+            let customLink = mapLinkField.value.trim();
+            
+            if (isEditingLink && customLink !== "") {
+                // If user pastes an iframe, extract just the URL
+                if (customLink.includes('<iframe')) { 
+                    const match = customLink.match(/src="([^"]+)"/); 
+                    if(match) { mapFrame.src = match[1]; } 
+                } else {
+                    mapFrame.src = customLink;
+                }
+            } else {
+                // If user is typing the address, auto-generate the map and update the link box
+                if (query) { 
+                    const encodedQuery = encodeURIComponent(query); 
+                    // FIXED: Official Google Maps Embed URL with correct $ syntax
+                    const autoUrl = `https://maps.google.com/maps?q=${encodedQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+                    
+                    mapFrame.src = autoUrl; 
+                    mapLinkField.value = autoUrl; // Keep link box perfectly in sync
+                } else { 
+                    mapFrame.src = `about:blank`; 
+                    if (!isEditingLink) mapLinkField.value = '';
+                }
+            }
+        }
+
+        function prepareAddProperty() {
+            try {
+                document.getElementById('property-form').reset(); document.getElementById('edit-index').value = "-1"; document.getElementById('submit-btn').innerText = "Submit to Cloud";
+                currentCover = null; currentCoverFile = null; currentFloorPlans = []; currentBrochure = null; currentBrochureName = ""; currentBrochureFile = null; currentUploads = [];
+                renderCover(); renderFloorPlanList(); renderBrochure(); renderUploadList(); document.querySelectorAll('.pill-radio input').forEach(r => r.checked = false);
+                const defaults = [ {name: "want_to", val: "Sell"}, {name: "prop_type_pill", val: "Apartment"}, {name: "furnish_type", val: "Unfurnished"}, {name: "parking_pill", val: "0"}, {name: "age_building", val: "Newly Constructed"}, {name: "facing_pill", val: "East"}, {name: "water_supply", val: "Corporation"}, {name: "non_veg", val: "Yes"}, {name: "parking_type", val: "Car"} ];
+                defaults.forEach(d => { const el = document.querySelector(`input[name="${d.name}"][value="${d.val}"]`); if(el) el.checked = true; });
+                document.getElementById('prop-size').value = ""; document.getElementById('prop-carpet-area').value = ""; document.getElementById('prop-beds').value = "0"; document.getElementById('prop-baths').value = "0"; document.getElementById('prop-balcony').value = "0"; document.getElementById('prop-kitchens').value = "0"; document.getElementById('prop-garages').value = "0"; document.getElementById('prop-garage-size').value = ""; document.getElementById('prop-year').value = ""; document.getElementById('prop-floors').value = ""; document.getElementById('prop-total-floors').value = ""; document.getElementById('prop-addr').value = ''; document.getElementById('prop-city').value = ''; document.getElementById('prop-state').value = ''; document.getElementById('prop-country').value = ''; document.getElementById('prop-map-link').value = ''; updateMap(); document.querySelectorAll('.amenity-cb').forEach(cb => cb.checked = false);
+            } catch(e) { console.error("Error resetting form:", e); } finally { showSection('add-property'); }
+        }
+
+        // File handling
+        function handleCoverUpload(event) { const file = event.target.files[0]; if(file) { currentCoverFile = file; const reader = new FileReader(); reader.onload = (e) => { currentCover = e.target.result; renderCover(); }; reader.readAsDataURL(file); } }
+        function renderCover() { const container = document.getElementById('cover-preview-container'); const img = document.getElementById('cover-img-element'); if(currentCover) { img.src = currentCover; container.classList.remove('hidden'); } else { container.classList.add('hidden'); } }
+        function removeCover() { currentCover = null; currentCoverFile = null; renderCover(); }
+        function handleFloorPlanUpload(event) { Array.from(event.target.files).forEach(file => { const reader = new FileReader(); reader.onload = (e) => { currentFloorPlans.push({ id: 'fp-'+Math.random(), src: e.target.result, name: file.name, isPdf: file.type === 'application/pdf', file: file }); renderFloorPlanList(); }; reader.readAsDataURL(file); }); }
+        function renderFloorPlanList() { document.getElementById('floor-plan-list').innerHTML = currentFloorPlans.map(media => { const isPdf = media.isPdf || (media.src && media.src.startsWith('data:application/pdf')); const content = isPdf ? `<div class="w-full h-full flex flex-col items-center justify-center bg-slate-200 dark:bg-slate-800 p-2 text-center"><i class="fas fa-file-pdf text-red-500 text-2xl mb-1"></i><span class="text-[10px] truncate w-full text-slate-700 dark:text-slate-300">${media.name || 'PDF'}</span></div>` : `<img src="${media.src}" class="w-full h-full object-cover">`; return `<div class="relative h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-slate-100 dark:bg-black">${content}<button type="button" onclick="removeFloorPlan('${media.id}')" class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10"><i class="fas fa-times"></i></button></div>`; }).join(''); }
+        function removeFloorPlan(id) { currentFloorPlans = currentFloorPlans.filter(i => i.id !== id); renderFloorPlanList(); }
+        function handleBrochureUpload(event) { const file = event.target.files[0]; if(file && file.type === "application/pdf") { currentBrochureFile = file; currentBrochureName = file.name; const reader = new FileReader(); reader.onload = (e) => { currentBrochure = e.target.result; renderBrochure(); }; reader.readAsDataURL(file); } }
+        function renderBrochure() { const container = document.getElementById('brochure-preview-container'); const filenameSpan = document.getElementById('brochure-filename'); if(currentBrochure) { filenameSpan.innerText = currentBrochureName; container.classList.remove('hidden'); } else { container.classList.add('hidden'); } }
+        function removeBrochure() { currentBrochure = null; currentBrochureFile = null; currentBrochureName = ""; renderBrochure(); }
+        function handleStoreUpload(event) { Array.from(event.target.files).forEach(file => { const reader = new FileReader(); reader.onload = (e) => { currentUploads.push({ id: 'media-'+Math.random(), src: e.target.result, file: file }); renderUploadList(); }; reader.readAsDataURL(file); }); }
+        function handleDragStart(index) { draggedItemIndex = index; } function handleDragOver(e) { e.preventDefault(); } function handleDrop(index) { if(draggedItemIndex === null || draggedItemIndex === index) return; const item = currentUploads.splice(draggedItemIndex, 1)[0]; currentUploads.splice(index, 0, item); renderUploadList(); }
+        function renderUploadList() { document.getElementById('upload-list').innerHTML = currentUploads.map((media, index) => { const isVideo = media.isVideo || (media.src && media.src.startsWith('data:video')); const mediaElement = isVideo ? `<video src="${media.src}" class="w-full h-full object-cover pointer-events-none" muted autoplay loop></video>` : `<img src="${media.src}" class="w-full h-full object-cover pointer-events-none">`; return `<div draggable="true" ondragstart="handleDragStart(${index})" ondragover="handleDragOver(event)" ondrop="handleDrop(${index})" class="relative h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group bg-slate-100 dark:bg-black cursor-move shadow-sm hover:shadow-md transition">${mediaElement}<div class="absolute bottom-1 left-1 bg-black/70 text-white font-bold text-[10px] px-2 py-0.5 rounded shadow z-10">${index + 1}</div><button type="button" onclick="removePhoto('${media.id}')" class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-20"><i class="fas fa-times"></i></button></div>`; }).join(''); }
+        function removePhoto(id) { currentUploads = currentUploads.filter(i => i.id !== id); renderUploadList(); }
+
+        // --- SUBMIT LOGIC ---
+        async function submitProperty(e) {
+            e.preventDefault(); const submitBtn = document.getElementById('submit-btn'); submitBtn.innerText = "Uploading to Cloud... Please wait"; submitBtn.disabled = true;
+            try {
+                const cloudName = 'doczext2i'; const uploadPreset = 'TOX INTL'; 
+                async function uploadFileToCloudinary(fileObj) { if(!fileObj) return null; const formData = new FormData(); formData.append('file', fileObj); formData.append('upload_preset', uploadPreset); const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData }); const data = await response.json(); return data.secure_url; }
+
+                let liveCoverUrl = currentCover; if (currentCoverFile) liveCoverUrl = await uploadFileToCloudinary(currentCoverFile);
+                let liveBrochureUrl = currentBrochure; if (currentBrochureFile) liveBrochureUrl = await uploadFileToCloudinary(currentBrochureFile);
+                let liveFloorPlans = []; for (let fp of currentFloorPlans) { if (fp.file) { const url = await uploadFileToCloudinary(fp.file); liveFloorPlans.push({ name: fp.name, isPdf: fp.isPdf, src: url }); } else { liveFloorPlans.push({ name: fp.name, isPdf: fp.isPdf, src: fp.src }); } }
+                let liveGallery = []; for (let img of currentUploads) { if (img.file) { const url = await uploadFileToCloudinary(img.file); liveGallery.push({ src: url, isVideo: img.file.type.startsWith('video/') }); } else { liveGallery.push({ src: img.src, isVideo: img.isVideo || img.src.startsWith('data:video') }); } }
+
+                const amenities = Array.from(document.querySelectorAll('.amenity-cb:checked')).map(cb => cb.value);
+                let displayImage = 'https://via.placeholder.com/400'; if(liveCoverUrl) displayImage = liveCoverUrl; else if(liveGallery.length > 0) displayImage = liveGallery[0].src;
+
+                const propPhoneCode = document.getElementById('prop-phone-code').value;
+                const propPhoneVal = document.getElementById('prop-contact').value;
+                const finalPropContact = propPhoneVal ? `${propPhoneCode} ${propPhoneVal}` : '';
+
+                const propData = {
+                    contactNo: finalPropContact, mailId: document.getElementById('prop-email').value || '',
+                    wantTo: document.querySelector('input[name="want_to"]:checked')?.value || '', propTypePill: document.querySelector('input[name="prop_type_pill"]:checked')?.value || '',
+                    configType: document.querySelector('input[name="config_type"]:checked')?.value || '', furnishType: document.querySelector('input[name="furnish_type"]:checked')?.value || '',
+                    parking: document.querySelector('input[name="parking_pill"]:checked')?.value || '0', ageBuilding: document.querySelector('input[name="age_building"]:checked')?.value || '',
+                    facing: document.querySelector('input[name="facing_pill"]:checked')?.value || '', waterSupply: document.querySelector('input[name="water_supply"]:checked')?.value || '',
+                    nonVeg: document.querySelector('input[name="non_veg"]:checked')?.value || '', parkingType: document.querySelector('input[name="parking_type"]:checked')?.value || '',
+                    maintenance: document.getElementById('prop-maintenance').value || '', size: document.getElementById('prop-size').value || '',
+                    carpetArea: document.getElementById('prop-carpet-area').value || '', beds: document.getElementById('prop-beds').value || '0',
+                    baths: document.getElementById('prop-baths').value || '0', balcony: document.getElementById('prop-balcony').value || '0',
+                    kitchens: document.getElementById('prop-kitchens').value || '0', garages: document.getElementById('prop-garages').value || '0',
+                    garageSize: document.getElementById('prop-garage-size').value || '', yearBuilt: document.getElementById('prop-year').value || '',
+                    floorNo: document.getElementById('prop-floors').value || '', totalFloors: document.getElementById('prop-total-floors').value || '',
+                    amenities: amenities, title: document.getElementById('prop-title').value, 
+                    description: document.getElementById('prop-desc').value,
+                    price: document.getElementById('prop-price').value || '0', address: document.getElementById('prop-addr').value, city: document.getElementById('prop-city').value || '',
+                    state: document.getElementById('prop-state').value || '', country: document.getElementById('prop-country').value || '', mapLink: document.getElementById('prop-map-link').value || '',
+                    image: displayImage, coverImage: liveCoverUrl, floorPlans: liveFloorPlans, brochure: liveBrochureUrl, brochureName: currentBrochureName, allImages: liveGallery,
+                    status: 'approved', submittedBy: 'admin', timestamp: new Date().toISOString()
+                };
+
+                const index = parseInt(document.getElementById('edit-index').value);
+                if (index === -1) { await window.addDoc(window.collection(window.db, "properties"), propData); } 
+                else { const docId = myProperties[index].id; if(docId) { const docRef = window.doc(window.db, "properties", docId); await window.updateDoc(docRef, propData); } else { await window.addDoc(window.collection(window.db, "properties"), propData); } }
+
+                showToast('Property Successfully Saved and is LIVE!'); 
+                await fetchLiveProperties(); showSection('my-properties');
+            } catch (error) { 
+                console.error("Error uploading:", error); 
+                showToast("Error saving property.", "error"); 
+            } 
+            finally { submitBtn.innerText = "Submit to Cloud"; submitBtn.disabled = false; }
+        }
+
+        function renderProperties() {
+            document.getElementById('stat-all').innerText = myProperties.length;
+            document.getElementById('properties-container').innerHTML = myProperties.map((p, i) => {
+                const imgTag = (p.image && p.image.includes('video')) ? `<video src="${p.image}" class="w-full h-52 object-cover" muted></video>` : `<img src="${p.image}" class="w-full h-52 object-cover">`;
+                const isPending = p.status === 'pending'; const isPurchased = p.status === 'purchased'; const isDraft = p.status === 'draft';
+                const isDeleteReq = p.status === 'delete_requested';
+
+                let statusBadge = `<span class="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-md text-[10px] font-bold shadow-md uppercase tracking-wider">Live</span>`;
+                if(isPending) statusBadge = `<span class="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-md text-[10px] font-bold shadow-md uppercase tracking-wider">Pending Approval</span>`;
+                if(isPurchased) statusBadge = `<span class="absolute top-4 right-4 bg-purple-500 text-white px-3 py-1 rounded-md text-[10px] font-bold shadow-md uppercase tracking-wider">Sold</span>`;
+                if(isDraft) statusBadge = `<span class="absolute top-4 right-4 bg-slate-500 text-white px-3 py-1 rounded-md text-[10px] font-bold shadow-md uppercase tracking-wider">Draft</span>`;
+                if(isDeleteReq) statusBadge = `<span class="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-md text-[10px] font-bold shadow-md uppercase tracking-wider">Delete Requested</span>`;
+
+                return `<div class="bg-white dark:bg-darkCard rounded-[2rem] overflow-hidden border border-slate-100 dark:border-slate-800 shadow-sm group hover:shadow-xl transition animate-fade-in relative">${imgTag}${statusBadge}<div class="p-6"><div class="flex justify-between items-start mb-2"><h4 class="font-bold text-lg truncate pr-2 w-3/4">${p.title}</h4><span class="text-primary font-black">₹${p.price}</span></div><p class="text-xs font-bold text-slate-500 mb-2">${p.wantTo ? p.wantTo + ' - ' : ''}${p.configType ? p.configType : p.propTypePill || ''}</p><p class="text-slate-400 text-xs mb-4 truncate"><i class="fas fa-map-marker-alt mr-1"></i> ${p.address}</p><div class="flex gap-2 border-t pt-4 border-slate-100 dark:border-slate-700"><button onclick="editProperty(${i})" class="action-btn bg-green-50 dark:bg-green-500/10 text-green-600 hover:bg-green-600 hover:text-white"><i class="far fa-edit"></i></button><button onclick="deleteProperty(${i})" class="action-btn bg-red-50 dark:bg-red-500/10 text-red-600 hover:bg-red-600 hover:text-white"><i class="far fa-trash-alt"></i></button></div></div></div>`;
+            }).join('');
+        }
+
+        async function deleteProperty(i) { 
+            if(confirm('Permanently Delete this listing from the Database?')) { 
+                const docId = myProperties[i].id;
+                try { 
+                    if(docId) { await window.deleteDoc(window.doc(window.db, "properties", docId)); } 
+                    myProperties.splice(i, 1); 
+                    
+                    const totalPages = Math.ceil(myProperties.length / itemsPerPage) || 1;
+                    if(currentPage > totalPages) currentPage = totalPages;
+                    
+                    renderProperties(); 
+                    handlePropertiesSearch(); 
+                    showToast('Property Deleted!');
+                } catch(e) { showToast("Error deleting document from database.", "error"); }
+            } 
+        }
+
+        function editProperty(i) {
+            const p = myProperties[i];
+            try {
+                document.getElementById('prop-title').value = p.title; document.getElementById('prop-price').value = p.price;
+                document.getElementById('prop-desc').value = p.description || p.desc || ''; 
+                
+                if (p.contactNo) {
+                    const parts = p.contactNo.split(' ');
+                    if(parts.length > 1 && parts[0].includes('+')) {
+                        document.getElementById('prop-phone-code').value = parts[0];
+                        document.getElementById('prop-contact').value = parts.slice(1).join(' ');
+                    } else {
+                        document.getElementById('prop-contact').value = p.contactNo;
+                    }
+                } else {
+                    document.getElementById('prop-contact').value = '';
+                }
+                
+                document.getElementById('prop-email').value = p.mailId || '';
+                document.getElementById('prop-maintenance').value = p.maintenance || ''; document.getElementById('prop-size').value = p.size || '';
+                document.getElementById('prop-carpet-area').value = p.carpetArea || ''; document.getElementById('prop-beds').value = p.beds || '0';
+                document.getElementById('prop-baths').value = p.baths || '0'; document.getElementById('prop-balcony').value = p.balcony || '0';
+                document.getElementById('prop-kitchens').value = p.kitchens || '0'; document.getElementById('prop-garages').value = p.garages || '0';
+                document.getElementById('prop-garage-size').value = p.garageSize || ''; document.getElementById('prop-year').value = p.yearBuilt || '';
+                document.getElementById('prop-floors').value = p.floorNo || ''; document.getElementById('prop-total-floors').value = p.totalFloors || ''; 
+                document.getElementById('prop-addr').value = p.address || ''; document.getElementById('prop-city').value = p.city || '';
+                document.getElementById('prop-state').value = p.state || ''; document.getElementById('prop-country').value = p.country || '';
+                document.getElementById('prop-map-link').value = p.mapLink || ''; updateMap(); 
+                
+                document.querySelectorAll('.pill-radio input').forEach(r => r.checked = false);
+                const setRadio = (name, val) => { if(val) { let r = document.querySelector(`input[name="${name}"][value="${val}"]`); if(r) r.checked = true; } };
+                setRadio("want_to", p.wantTo); setRadio("prop_type_pill", p.propTypePill); setRadio("config_type", p.configType);
+                setRadio("furnish_type", p.furnishType); setRadio("parking_pill", p.parking); setRadio("age_building", p.ageBuilding);
+                setRadio("facing_pill", p.facing); setRadio("water_supply", p.waterSupply); setRadio("non_veg", p.nonVeg); setRadio("parking_type", p.parkingType);
+
+                document.querySelectorAll('.amenity-cb').forEach(cb => cb.checked = false);
+                if(p.amenities) { p.amenities.forEach(val => { let cb = document.querySelector(`.amenity-cb[value="${val}"]`); if(cb) cb.checked = true; }); }
+
+                document.getElementById('edit-index').value = i; document.getElementById('submit-btn').innerText = "Update Property";
+                currentCoverFile = null; currentCover = p.coverImage || null; currentFloorPlans = p.floorPlans ? p.floorPlans.map(fp => ({ id: 'fp-'+Math.random(), src: fp.src, name: fp.name, isPdf: fp.isPdf })) : []; currentBrochureFile = null; currentBrochure = p.brochure || null; currentBrochureName = p.brochureName || ""; currentUploads = p.allImages ? p.allImages.map(img => ({ id: 'img-'+Math.random(), src: img.src, isVideo: img.isVideo })) : []; renderCover(); renderFloorPlanList(); renderBrochure(); renderUploadList();
+            } catch(e) { console.error("Error setting up edit form:", e); } finally { showSection('add-property'); }
+        }
+        function initChart() { const ctx = document.getElementById('propChart').getContext('2d'); new Chart(ctx, { type: 'bar', data: { labels: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], datasets: [{ label: 'Views', data: [0,0,0,0,0,0,0], backgroundColor: '#3b82f6', borderRadius: 8 }] }, options: { responsive: true, plugins: { legend: { display: false } } } }); }
+    </script>
+</body>
+</html>

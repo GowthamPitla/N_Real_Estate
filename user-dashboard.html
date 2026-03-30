@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOX Intl | User Dashboard</title>
+    
+    <script>
+        if (sessionStorage.getItem('toxUserAuth') !== 'true') {
+            window.location.href = 'public.html';
+        }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAo8Y-hREmsHsiBPVCRMFYHP4Mnd7rHJUc",
+            authDomain: "tox-intl.firebaseapp.com",
+            projectId: "tox-intl",
+            storageBucket: "tox-intl.firebasestorage.app",
+            messagingSenderId: "966798205481",
+            appId: "1:966798205481:web:9bbc3e8f82ed49ef52f238"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
+    </script>
+
+    <script>
+        tailwind.config = { theme: { extend: { colors: { primary: '#3b82f6', darkBg: '#0f172a', darkCard: '#1e293b' }, fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; background-color: #F8F9FA; transition: background-color 0.3s; }
+        .sidebar-item { border-radius: 0.5rem; transition: all 0.2s ease-in-out; font-weight: 500; font-size: 15px; }
+        .sidebar-item:hover { background: #f1f5f9; color: #3b82f6; }
+        .sidebar-item.active { background: #eff6ff; color: #3b82f6; font-weight: 600; }
+        .hidden-section { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .form-card { background: white; border-radius: 1rem; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 14px; color: #475569; }
+        .required-star { color: #ef4444; margin-left: 2px; }
+        .input-style { width: 100%; padding: 0.75rem 1rem; border-radius: 0.5rem; background: #ffffff; border: 1px solid #e2e8f0; outline: none; font-size: 14px; transition: all 0.2s; color: #1e293b; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
+        .input-style:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .pill-label { padding: 0.5rem 1.25rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s; font-size: 14px; display: inline-block; color: #475569; background: white; }
+        .pill-radio input:checked + .pill-label { background-color: #eff6ff; color: #3b82f6; border-color: #3b82f6; font-weight: 600; }
+        .round-pill-label { width: 40px; height: 40px; border-radius: 0.5rem; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s; font-size: 14px; display: flex; align-items: center; justify-content: center; color: #475569; background: white; }
+        .pill-radio input:checked + .round-pill-label { background-color: #eff6ff; color: #3b82f6; border-color: #3b82f6; font-weight: 600; }
+        .action-btn { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 14px; }
+    </style>
+</head>
+<body class="text-slate-900">
+
+    <div id="dashboard-ui" class="flex h-screen">
+        
+        <aside class="w-[280px] bg-white border-r border-slate-200 flex flex-col p-6 overflow-y-auto z-50 shrink-0">
+            <div class="flex items-center gap-3 mb-10 px-2">
+                <div class="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white font-bold text-xl">T</div>
+                <h1 class="text-[22px] font-extrabold tracking-tight uppercase text-slate-900">TOX INTL</h1>
+            </div>
+
+            <nav class="space-y-6 flex-1">
+                <div class="space-y-1">
+                    <p class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Listing</p>
+                    <button onclick="showSection('my-properties')" id="btn-my-properties" class="sidebar-item active w-full flex items-center gap-4 px-4 py-3 text-slate-600">
+                        <i class="fas fa-list-ul w-5 text-center text-lg"></i> <span>My Properties</span>
+                    </button>
+                    <button onclick="prepareAddProperty()" id="btn-add-property" class="sidebar-item w-full flex items-center gap-4 px-4 py-3 text-slate-600">
+                        <i class="fas fa-plus w-5 text-center text-lg"></i> <span>Add New Property</span>
+                    </button>
+                </div>
+            </nav>
+
+            <div class="mt-8 pt-8 border-t border-slate-100 space-y-4">
+                <a href="public.html" class="w-full flex items-center gap-4 px-4 py-2 font-bold text-primary hover:text-blue-700 transition bg-blue-50 hover:bg-blue-100 rounded-lg shadow-sm">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-arrow-left"></i></div>
+                    <span class="text-[15px]">Live Website</span>
+                </a>
+                <button onclick="handleLogout()" class="w-full flex items-center gap-4 px-4 py-2 font-bold group text-red-500 hover:text-red-600 transition">
+                    <div class="w-8 h-8 rounded-full border-2 border-red-500 flex items-center justify-center transition-all group-hover:bg-red-50"><i class="fas fa-sign-out-alt"></i></div>
+                    <span class="text-[15px]">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto relative">
+            <header class="px-8 py-5 flex justify-between items-center sticky top-0 bg-[#F8F9FA]/90 backdrop-blur-md z-40 border-b border-slate-200">
+                <h2 id="page-title" class="text-[28px] font-bold text-slate-800">My Properties</h2>
+                <div class="flex items-center gap-4">
+                    <button onclick="prepareAddProperty()" class="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-plus text-sm"></i>
+                    </button>
+                    <div class="flex items-center gap-3 ml-2">
+                        <div class="w-10 h-10 bg-slate-800 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm">U</div>
+                        <span class="text-sm font-bold text-slate-800 hidden xl:block uppercase">USER</span>
+                    </div>
+                </div>
+            </header>
+
+            <section id="sec-my-properties" class="p-8 w-full">
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <h3 class="text-xl font-bold text-slate-800">My Properties</h3>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50 text-slate-400 border-b border-slate-100">
+                                <tr>
+                                    <th class="p-5 font-bold text-[11px] uppercase tracking-wider">Property Name</th>
+                                    <th class="p-5 font-bold text-[11px] uppercase tracking-wider">Status</th>
+                                    <th class="p-5 font-bold text-[11px] uppercase tracking-wider">Price</th>
+                                    <th class="p-5 font-bold text-[11px] uppercase tracking-wider">Date Submitted</th>
+                                    <th class="p-5 font-bold text-[11px] uppercase tracking-wider text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="properties-table-body" class="divide-y divide-slate-100 text-slate-700 bg-white">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-add-property" class="hidden-section p-8 w-full max-w-6xl mx-auto">
+                <form id="property-form" onsubmit="submitProperty(event)" class="space-y-6">
+                    <input type="hidden" id="edit-index" value="-1">
+                    
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-6 uppercase tracking-widest text-slate-400">Overview</h3>
+                        <div class="space-y-5">
+                            <div><label>Property Title<span class="required-star">*</span></label><input type="text" id="prop-title" class="input-style" placeholder="Your Property Name" required></div>
+                            <div><label>Description<span class="required-star">*</span></label><textarea id="prop-desc" class="input-style" rows="4" placeholder="Write about property details, highlights, etc..." required></textarea></div>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div><label>Price (₹)<span class="required-star">*</span></label><input type="text" id="prop-price" class="input-style" placeholder="Ex: 5000000" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                                <div><label>Yearly Tax Rate<span class="required-star">*</span></label><input type="text" id="prop-tax" class="input-style" placeholder="Tax Rate"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-6">
+                                <div><label>Contact No.<span class="required-star">*</span></label><input type="text" id="prop-contact" class="input-style" placeholder="Ex: 9876543210" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                                <div><label>Mail ID<span class="required-star">*</span></label><input type="email" id="prop-email" class="input-style" placeholder="Ex: owner@example.com" required></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-6 uppercase tracking-widest text-slate-400">Specific Details</h3>
+                        <div class="space-y-5">
+                            <div><label>I want to <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="want_to" value="Sell" class="hidden" checked><div class="pill-label">Sell</div></label><label class="pill-radio"><input type="radio" name="want_to" value="Rent" class="hidden"><div class="pill-label">Rent</div></label></div></div>
+                            <div><label>Property Type <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="prop_type_pill" value="Apartment" class="hidden" checked><div class="pill-label">Apartment</div></label><label class="pill-radio"><input type="radio" name="prop_type_pill" value="Independent House/Villa" class="hidden"><div class="pill-label">Independent House/Villa</div></label><label class="pill-radio"><input type="radio" name="prop_type_pill" value="Independent Floor" class="hidden"><div class="pill-label">Independent Floor</div></label><label class="pill-radio"><input type="radio" name="prop_type_pill" value="Row House" class="hidden"><div class="pill-label">Row House</div></label><label class="pill-radio"><input type="radio" name="prop_type_pill" value="Pent House" class="hidden"><div class="pill-label">Pent House</div></label><label class="pill-radio"><input type="radio" name="prop_type_pill" value="Studio" class="hidden"><div class="pill-label">Studio</div></label><label class="pill-radio"><input type="radio" name="prop_type_pill" value="Duplex" class="hidden"><div class="pill-label">Duplex</div></label></div></div>
+                            <div><label>Configuration Type <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="config_type" value="1 RK" class="hidden"><div class="pill-label">1 RK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="1 BHK" class="hidden"><div class="pill-label">1 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="1.5 BHK" class="hidden"><div class="pill-label">1.5 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="2 BHK" class="hidden"><div class="pill-label">2 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="2.5 BHK" class="hidden"><div class="pill-label">2.5 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="3 BHK" class="hidden"><div class="pill-label">3 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="3.5 BHK" class="hidden"><div class="pill-label">3.5 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="4 BHK" class="hidden"><div class="pill-label">4 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="4.5 BHK" class="hidden"><div class="pill-label">4.5 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="5 BHK" class="hidden"><div class="pill-label">5 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="6 BHK" class="hidden"><div class="pill-label">6 BHK</div></label><label class="pill-radio"><input type="radio" name="config_type" value="Studio" class="hidden"><div class="pill-label">Studio</div></label><label class="pill-radio"><input type="radio" name="config_type" value="Other" class="hidden"><div class="pill-label">Other</div></label></div></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2"><div><label>Furnish Type <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="furnish_type" value="Unfurnished" class="hidden" checked><div class="pill-label">Unfurnished</div></label><label class="pill-radio"><input type="radio" name="furnish_type" value="Semi Furnished" class="hidden"><div class="pill-label">Semi Furnished</div></label><label class="pill-radio"><input type="radio" name="furnish_type" value="Fully Furnished" class="hidden"><div class="pill-label">Fully Furnished</div></label></div></div><div><label>Water Supply <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="water_supply" value="Corporation" class="hidden" checked><div class="pill-label">Corporation</div></label><label class="pill-radio"><input type="radio" name="water_supply" value="Borewell" class="hidden"><div class="pill-label">Borewell</div></label><label class="pill-radio"><input type="radio" name="water_supply" value="Both" class="hidden"><div class="pill-label">Both</div></label></div></div></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2"><div><label>Age of Building <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="age_building" value="Newly Constructed" class="hidden" checked><div class="pill-label">Newly Constructed</div></label><label class="pill-radio"><input type="radio" name="age_building" value="1-5 Years" class="hidden"><div class="pill-label">1-5 Years</div></label><label class="pill-radio"><input type="radio" name="age_building" value="5-10 Years" class="hidden"><div class="pill-label">5-10 Years</div></label><label class="pill-radio"><input type="radio" name="age_building" value="10+ Years" class="hidden"><div class="pill-label">10+ Years</div></label></div></div><div><label>Non-Veg Allowed <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="non_veg" value="Yes" class="hidden" checked><div class="pill-label">Yes</div></label><label class="pill-radio"><input type="radio" name="non_veg" value="No" class="hidden"><div class="pill-label">No</div></label></div></div></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2"><div><label>Parking Type <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="parking_type" value="Car" class="hidden" checked><div class="pill-label">Car</div></label><label class="pill-radio"><input type="radio" name="parking_type" value="Bike" class="hidden"><div class="pill-label">Bike</div></label><label class="pill-radio"><input type="radio" name="parking_type" value="Bike and Car" class="hidden"><div class="pill-label">Bike and Car</div></label><label class="pill-radio"><input type="radio" name="parking_type" value="None" class="hidden"><div class="pill-label">None</div></label></div></div><div><label>Parking Count <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="parking_pill" value="0" class="hidden" checked><div class="round-pill-label">0</div></label><label class="pill-radio"><input type="radio" name="parking_pill" value="1" class="hidden"><div class="round-pill-label">1</div></label><label class="pill-radio"><input type="radio" name="parking_pill" value="2" class="hidden"><div class="round-pill-label">2</div></label><label class="pill-radio"><input type="radio" name="parking_pill" value="3" class="hidden"><div class="round-pill-label">3</div></label><label class="pill-radio"><input type="radio" name="parking_pill" value="3+" class="hidden"><div class="round-pill-label">3+</div></label></div></div></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                <div><label>Facing <span class="required-star">*</span></label><div class="flex flex-wrap gap-3"><label class="pill-radio"><input type="radio" name="facing_pill" value="East" class="hidden" checked><div class="pill-label">East</div></label><label class="pill-radio"><input type="radio" name="facing_pill" value="West" class="hidden"><div class="pill-label">West</div></label><label class="pill-radio"><input type="radio" name="facing_pill" value="North" class="hidden"><div class="pill-label">North</div></label><label class="pill-radio"><input type="radio" name="facing_pill" value="South" class="hidden"><div class="pill-label">South</div></label><label class="pill-radio"><input type="radio" name="facing_pill" value="North-East" class="hidden"><div class="pill-label">North-East</div></label><label class="pill-radio"><input type="radio" name="facing_pill" value="North-West" class="hidden"><div class="pill-label">North-West</div></label><label class="pill-radio"><input type="radio" name="facing_pill" value="South-East" class="hidden"><div class="pill-label">South-East</div></label><label class="pill-radio"><input type="radio" name="facing_pill" value="South-West" class="hidden"><div class="pill-label">South-West</div></label></div></div>
+                                <div><label>Maintenance Charges</label><input type="text" id="prop-maintenance" class="input-style" placeholder="Ex: 2000" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-0">Select Amenities</h3>
+                            <button type="button" onclick="toggleAllAmenities()" class="text-primary text-sm font-bold hover:underline transition">Select All</button>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-4 gap-x-4">
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="EV Charging Station" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">EV Charging Station</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Power Back Up" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Power Back Up</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Security" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Security</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Gym" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Gym</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Indoor Games" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Indoor Games</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Outdoor Games" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Outdoor Games</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="PlayGround" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">PlayGround</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Club House" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Club House</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Jogging Track" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Jogging Track</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Visitor Parking" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Visitor Parking</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="A/C & Heating" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">A/C & Heating</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Garages" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Garages</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Swimming Pool" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Swimming Pool</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Parking" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Parking</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Lake View" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Lake View</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Garden" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Garden</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Disabled Access" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Disabled Access</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Pet Friendly" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Pet Friendly</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Ceiling Height" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Ceiling Height</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Outdoor Shower" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Outdoor Shower</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Refrigerator" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Refrigerator</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Fireplace" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Fireplace</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Wifi" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Wifi</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="TV Cable" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">TV Cable</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Barbeque" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Barbeque</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Laundry" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Laundry</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Dryer" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Dryer</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Lawn" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Lawn</span></label>
+                            <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" value="Elevator" class="amenity-cb w-4 h-4 text-primary rounded border-slate-300"> <span class="text-sm text-slate-600">Elevator</span></label>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-6 uppercase tracking-widest text-slate-400">Listing Details</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div><label>Size in ft<span class="required-star">*</span></label><input type="text" id="prop-size" class="input-style" placeholder="Ex: 3210" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div><label>Carpet Area<span class="required-star">*</span></label><input type="text" id="prop-carpet-area" class="input-style" placeholder="Ex: 2800" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div><label>Bedrooms<span class="required-star">*</span></label><select id="prop-beds" class="input-style num-dropdown"></select></div>
+                            <div><label>Bathrooms<span class="required-star">*</span></label><select id="prop-baths" class="input-style num-dropdown"></select></div>
+                            <div><label>Balconies<span class="required-star">*</span></label><select id="prop-balcony" class="input-style num-dropdown"></select></div>
+                            <div><label>Kitchens<span class="required-star">*</span></label><select id="prop-kitchens" class="input-style num-dropdown"></select></div>
+                            <div><label>Garages</label><select id="prop-garages" class="input-style num-dropdown"></select></div>
+                            <div><label>Garage Size</label><input type="text" id="prop-garage-size" class="input-style" placeholder="Ex: 1230" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+                            <div><label>Year Built<span class="required-star">*</span></label><input type="text" id="prop-year" class="input-style" placeholder="Type Year" maxlength="4" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div><label>Floor No<span class="required-star">*</span></label><input type="text" id="prop-floors" class="input-style" placeholder="Ex: 2" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div><label>No. of Floors in Bldg</label><input type="text" id="prop-total-floors" class="input-style" placeholder="Ex: 5" oninput="this.value = this.value.replace(/[^0-9]/g, '')"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-4 uppercase tracking-widest text-slate-400">1. Cover Page Image (Optional)</h3>
+                        <label class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition group"><i class="fas fa-image text-3xl text-slate-300 group-hover:text-primary transition mb-2"></i><span class="font-bold">Upload Cover Image</span><input type="file" accept="image/*" class="hidden" onchange="handleCoverUpload(event)"></label>
+                        <div id="cover-preview-container" class="mt-6 hidden"><div class="relative h-48 w-full md:w-1/2 lg:w-1/3 rounded-xl overflow-hidden border border-slate-200 group bg-slate-100"><img id="cover-img-element" src="" class="w-full h-full object-cover"><button type="button" onclick="removeCover()" class="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10"><i class="fas fa-times"></i></button></div></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="form-card" style="margin-bottom: 0;"><h3 class="text-[11px] font-bold mb-4 uppercase tracking-widest text-slate-400">2. Floor Plans (Optional)</h3><label class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition group"><i class="fas fa-map text-3xl text-slate-300 group-hover:text-primary transition mb-2"></i><span class="font-bold">Upload Floor Plans</span><input type="file" accept="image/*,application/pdf" multiple class="hidden" onchange="handleFloorPlanUpload(event)"></label><div id="floor-plan-list" class="mt-8 grid grid-cols-2 gap-4"></div></div>
+                        <div class="form-card" style="margin-bottom: 0;"><h3 class="text-[11px] font-bold mb-4 uppercase tracking-widest text-slate-400">3. Brochure (Optional)</h3><label class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition group"><i class="fas fa-file-pdf text-3xl text-slate-300 group-hover:text-primary transition mb-2"></i><span class="font-bold">Upload PDF</span><input type="file" accept="application/pdf" class="hidden" onchange="handleBrochureUpload(event)"></label><div id="brochure-preview-container" class="mt-6 hidden"><div class="relative p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between group shadow-sm"><div class="flex items-center gap-3 overflow-hidden"><i class="fas fa-file-pdf text-red-500 text-3xl"></i><span id="brochure-filename" class="text-sm font-bold truncate text-slate-700">brochure.pdf</span></div><button type="button" onclick="removeBrochure()" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white w-8 h-8 rounded-full flex items-center justify-center transition"><i class="fas fa-times"></i></button></div></div></div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-4 uppercase tracking-widest text-slate-400">4. Property Photos & Videos</h3>
+                        <label class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition group"><i class="fas fa-cloud-upload-alt text-3xl text-slate-300 group-hover:text-primary transition mb-2"></i><span class="font-bold">Upload Gallery Media</span><input type="file" accept="image/*,video/*" multiple class="hidden" onchange="handleStoreUpload(event)"></label><div id="upload-list" class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3 class="text-[11px] font-bold mb-6 uppercase tracking-widest text-slate-400">Location</h3>
+                        <div class="space-y-6">
+                            <div>
+                                <label>Full Address (or Coordinates)<span class="required-star">*</span></label>
+                                <input type="text" id="prop-addr" class="input-style" placeholder="Ex: 45 Cyberabad, Tech Park" onkeyup="updateMap()" required>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6"><div><label>Country<span class="required-star">*</span></label><input list="countries" id="prop-country" class="input-style" placeholder="Select Country" onchange="updateMap()" onkeyup="updateMap()" required><datalist id="countries"><option value="India"><option value="USA"></datalist></div><div><label>City<span class="required-star">*</span></label><input type="text" id="prop-city" class="input-style" placeholder="Select City" onkeyup="updateMap()" required></div><div><label>State<span class="required-star">*</span></label><input type="text" id="prop-state" class="input-style" placeholder="Select State" onkeyup="updateMap()" required></div></div>
+                            <div>
+                                <label>Map Location Link</label>
+                                <input type="text" id="prop-map-link" class="input-style" placeholder="Paste custom Google Maps link here (optional)" onkeyup="updateMap()">
+                            </div>
+                            <div class="w-full h-72 bg-slate-200 rounded-2xl overflow-hidden border border-slate-200 shadow-inner relative mt-4">
+                                <iframe id="map-preview" width="100%" height="100%" frameborder="0" style="border:0;" allowfullscreen="" aria-hidden="false" tabindex="0" src="about:blank"></iframe>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4 pb-20">
+                        <button type="submit" id="submit-btn" class="bg-primary text-white px-12 py-3.5 rounded-lg font-bold shadow-md hover:bg-blue-600 transition">Submit Property</button>
+                        <button type="button" onclick="showSection('my-properties')" class="bg-white border border-slate-200 px-12 py-3.5 rounded-lg font-bold hover:bg-slate-50 transition">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        let myProperties = [];
+        let currentCover = null; let currentCoverFile = null; let currentFloorPlans = []; let currentBrochure = null; let currentBrochureName = ""; let currentBrochureFile = null; let currentUploads = []; let draggedItemIndex = null;
+
+        window.toggleAllAmenities = function() {
+            const checkboxes = document.querySelectorAll('.amenity-cb');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        };
+
+        document.querySelectorAll('.num-dropdown').forEach(el => { let options = ''; for(let i=0; i<=10; i++) options += `<option value="${i}">${i}</option>`; options += `<option value="10+">10+</option>`; el.innerHTML = options; });
+        document.querySelectorAll('input[name="config_type"]').forEach(radio => { radio.addEventListener('change', (e) => { const val = e.target.value; const bedsDropdown = document.getElementById('prop-beds'); const kitchensDropdown = document.getElementById('prop-kitchens'); const match = val.match(/^(\d+)/); if (match) { bedsDropdown.value = match[1]; kitchensDropdown.value = "1"; } else if (val === 'Studio') { bedsDropdown.value = "1"; kitchensDropdown.value = "1"; } else { bedsDropdown.value = "0"; kitchensDropdown.value = "0"; } }); });
+
+        window.onload = async () => { showSection('my-properties'); await fetchLiveProperties(); };
+
+        function handleLogout() { sessionStorage.removeItem('toxUserAuth'); window.location.href = 'public.html'; }
+
+        async function fetchLiveProperties() {
+            if (!window.db) { setTimeout(fetchLiveProperties, 200); return; } // Added Retry Logic
+            try {
+                const querySnapshot = await window.getDocs(window.collection(window.db, "properties"));
+                myProperties = [];
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if(data.submittedBy === 'user') { 
+                        myProperties.push({ id: doc.id, ...data }); 
+                    }
+                });
+                renderProperties();
+            } catch (error) { console.error("Error fetching live properties:", error); }
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden-section'));
+            const targetSection = document.getElementById('sec-' + id); if (targetSection) { targetSection.classList.remove('hidden-section'); }
+            document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById('btn-' + id); if(btn) btn.classList.add('active');
+            let displayTitle = id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            if (id === 'add-property') displayTitle = 'Add Property';
+            document.getElementById('page-title').innerText = displayTitle;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function updateMap() {
+            let addr = document.getElementById('prop-addr').value.trim(); 
+            const city = document.getElementById('prop-city').value.trim(); 
+            const state = document.getElementById('prop-state').value.trim(); 
+            const country = document.getElementById('prop-country').value.trim(); 
+            const mapLinkField = document.getElementById('prop-map-link');
+            const mapFrame = document.getElementById('map-preview');
+            
+            // Ignore if user typed a raw http link in the address field
+            if (addr.includes('http')) { addr = ''; } 
+            
+            const queryParts = [addr, city, state, country].filter(Boolean); 
+            const query = queryParts.join(', '); 
+            
+            // Check if the user is currently typing inside the Link field manually
+            const isEditingLink = document.activeElement === mapLinkField;
+            let customLink = mapLinkField.value.trim();
+            
+            if (isEditingLink && customLink !== "") {
+                // If user pastes an iframe, extract just the URL
+                if (customLink.includes('<iframe')) { 
+                    const match = customLink.match(/src="([^"]+)"/); 
+                    if(match) { mapFrame.src = match[1]; } 
+                } else {
+                    mapFrame.src = customLink;
+                }
+            } else {
+                // If user is typing the address, auto-generate the map and update the link box
+                if (query) { 
+                    const encodedQuery = encodeURIComponent(query); 
+                    // FIXED: Official Google Maps Embed URL with correct $ syntax
+                    const autoUrl = `https://maps.google.com/maps?q=${encodedQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+                    
+                    mapFrame.src = autoUrl; 
+                    mapLinkField.value = autoUrl; // Keep link box perfectly in sync
+                } else { 
+                    mapFrame.src = `about:blank`; 
+                    if (!isEditingLink) mapLinkField.value = '';
+                }
+            }
+        }
+
+        function prepareAddProperty() {
+            try {
+                document.getElementById('property-form').reset(); document.getElementById('edit-index').value = "-1"; document.getElementById('submit-btn').innerText = "Submit Property";
+                currentCover = null; currentCoverFile = null; currentFloorPlans = []; currentBrochure = null; currentBrochureName = ""; currentBrochureFile = null; currentUploads = [];
+                renderCover(); renderFloorPlanList(); renderBrochure(); renderUploadList(); document.querySelectorAll('.pill-radio input').forEach(r => r.checked = false);
+                const defaults = [ {name: "want_to", val: "Sell"}, {name: "prop_type_pill", val: "Apartment"}, {name: "furnish_type", val: "Unfurnished"}, {name: "parking_pill", val: "0"}, {name: "age_building", val: "Newly Constructed"}, {name: "facing_pill", val: "East"}, {name: "water_supply", val: "Corporation"}, {name: "non_veg", val: "Yes"}, {name: "parking_type", val: "Car"} ];
+                defaults.forEach(d => { const el = document.querySelector(`input[name="${d.name}"][value="${d.val}"]`); if(el) el.checked = true; });
+                document.getElementById('prop-size').value = ""; document.getElementById('prop-carpet-area').value = ""; document.getElementById('prop-beds').value = "0"; document.getElementById('prop-baths').value = "0"; document.getElementById('prop-balcony').value = "0"; document.getElementById('prop-kitchens').value = "0"; document.getElementById('prop-garages').value = "0"; document.getElementById('prop-garage-size').value = ""; document.getElementById('prop-year').value = ""; document.getElementById('prop-floors').value = ""; document.getElementById('prop-total-floors').value = ""; document.getElementById('prop-addr').value = ''; document.getElementById('prop-city').value = ''; document.getElementById('prop-state').value = ''; document.getElementById('prop-country').value = ''; document.getElementById('prop-map-link').value = ''; updateMap(); document.querySelectorAll('.amenity-cb').forEach(cb => cb.checked = false);
+            } catch(e) { console.error("Error resetting form:", e); } finally { showSection('add-property'); }
+        }
+
+        function handleCoverUpload(event) { const file = event.target.files[0]; if(file) { currentCoverFile = file; const reader = new FileReader(); reader.onload = (e) => { currentCover = e.target.result; renderCover(); }; reader.readAsDataURL(file); } }
+        function renderCover() { const container = document.getElementById('cover-preview-container'); const img = document.getElementById('cover-img-element'); if(currentCover) { img.src = currentCover; container.classList.remove('hidden'); } else { container.classList.add('hidden'); } }
+        function removeCover() { currentCover = null; currentCoverFile = null; renderCover(); }
+        function handleFloorPlanUpload(event) { Array.from(event.target.files).forEach(file => { const reader = new FileReader(); reader.onload = (e) => { currentFloorPlans.push({ id: 'fp-'+Math.random(), src: e.target.result, name: file.name, isPdf: file.type === 'application/pdf', file: file }); renderFloorPlanList(); }; reader.readAsDataURL(file); }); }
+        function renderFloorPlanList() { document.getElementById('floor-plan-list').innerHTML = currentFloorPlans.map(media => { const isPdf = media.isPdf || (media.src && media.src.startsWith('data:application/pdf')); const content = isPdf ? `<div class="w-full h-full flex flex-col items-center justify-center bg-slate-200 p-2 text-center"><i class="fas fa-file-pdf text-red-500 text-2xl mb-1"></i><span class="text-[10px] truncate w-full">${media.name || 'PDF'}</span></div>` : `<img src="${media.src}" class="w-full h-full object-cover">`; return `<div class="relative h-24 rounded-xl overflow-hidden border border-slate-200 group bg-slate-100">${content}<button type="button" onclick="removeFloorPlan('${media.id}')" class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10"><i class="fas fa-times"></i></button></div>`; }).join(''); }
+        function removeFloorPlan(id) { currentFloorPlans = currentFloorPlans.filter(i => i.id !== id); renderFloorPlanList(); }
+        function handleBrochureUpload(event) { const file = event.target.files[0]; if(file && file.type === "application/pdf") { currentBrochureFile = file; currentBrochureName = file.name; const reader = new FileReader(); reader.onload = (e) => { currentBrochure = e.target.result; renderBrochure(); }; reader.readAsDataURL(file); } }
+        function renderBrochure() { const container = document.getElementById('brochure-preview-container'); const filenameSpan = document.getElementById('brochure-filename'); if(currentBrochure) { filenameSpan.innerText = currentBrochureName; container.classList.remove('hidden'); } else { container.classList.add('hidden'); } }
+        function removeBrochure() { currentBrochure = null; currentBrochureFile = null; currentBrochureName = ""; renderBrochure(); }
+        function handleStoreUpload(event) { Array.from(event.target.files).forEach(file => { const reader = new FileReader(); reader.onload = (e) => { currentUploads.push({ id: 'media-'+Math.random(), src: e.target.result, file: file }); renderUploadList(); }; reader.readAsDataURL(file); }); }
+        function handleDragStart(index) { draggedItemIndex = index; } function handleDragOver(e) { e.preventDefault(); } function handleDrop(index) { if(draggedItemIndex === null || draggedItemIndex === index) return; const item = currentUploads.splice(draggedItemIndex, 1)[0]; currentUploads.splice(index, 0, item); renderUploadList(); }
+        function renderUploadList() { document.getElementById('upload-list').innerHTML = currentUploads.map((media, index) => { const isVideo = media.isVideo || (media.src && media.src.startsWith('data:video')); const mediaElement = isVideo ? `<video src="${media.src}" class="w-full h-full object-cover pointer-events-none" muted autoplay loop></video>` : `<img src="${media.src}" class="w-full h-full object-cover pointer-events-none">`; return `<div draggable="true" ondragstart="handleDragStart(${index})" ondragover="handleDragOver(event)" ondrop="handleDrop(${index})" class="relative h-24 rounded-xl overflow-hidden border border-slate-200 group bg-slate-100 cursor-move shadow-sm hover:shadow-md transition">${mediaElement}<div class="absolute bottom-1 left-1 bg-black/70 text-white font-bold text-[10px] px-2 py-0.5 rounded shadow z-10">${index + 1}</div><button type="button" onclick="removePhoto('${media.id}')" class="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-20"><i class="fas fa-times"></i></button></div>`; }).join(''); }
+        function removePhoto(id) { currentUploads = currentUploads.filter(i => i.id !== id); renderUploadList(); }
+
+        async function submitProperty(e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.innerText = "Uploading to Cloud... Please wait"; 
+            submitBtn.disabled = true;
+
+            try {
+                const cloudName = 'doczext2i'; const uploadPreset = 'TOX INTL'; 
+                async function uploadFileToCloudinary(fileObj) { if(!fileObj) return null; const formData = new FormData(); formData.append('file', fileObj); formData.append('upload_preset', uploadPreset); const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData }); const data = await response.json(); return data.secure_url; }
+
+                let liveCoverUrl = currentCover; if (currentCoverFile) liveCoverUrl = await uploadFileToCloudinary(currentCoverFile);
+                let liveBrochureUrl = currentBrochure; if (currentBrochureFile) liveBrochureUrl = await uploadFileToCloudinary(currentBrochureFile);
+                let liveFloorPlans = []; for (let fp of currentFloorPlans) { if (fp.file) { const url = await uploadFileToCloudinary(fp.file); liveFloorPlans.push({ name: fp.name, isPdf: fp.isPdf, src: url }); } else { liveFloorPlans.push({ name: fp.name, isPdf: fp.isPdf, src: fp.src }); } }
+                let liveGallery = []; for (let img of currentUploads) { if (img.file) { const url = await uploadFileToCloudinary(img.file); liveGallery.push({ src: url, isVideo: img.file.type.startsWith('video/') }); } else { liveGallery.push({ src: img.src, isVideo: img.isVideo || img.src.startsWith('data:video') }); } }
+
+                const amenities = Array.from(document.querySelectorAll('.amenity-cb:checked')).map(cb => cb.value);
+                let displayImage = 'https://via.placeholder.com/400'; if(liveCoverUrl) displayImage = liveCoverUrl; else if(liveGallery.length > 0) displayImage = liveGallery[0].src;
+
+                const propData = {
+                    contactNo: document.getElementById('prop-contact').value || '', mailId: document.getElementById('prop-email').value || '',
+                    wantTo: document.querySelector('input[name="want_to"]:checked')?.value || '', propTypePill: document.querySelector('input[name="prop_type_pill"]:checked')?.value || '',
+                    configType: document.querySelector('input[name="config_type"]:checked')?.value || '', furnishType: document.querySelector('input[name="furnish_type"]:checked')?.value || '',
+                    parking: document.querySelector('input[name="parking_pill"]:checked')?.value || '0', ageBuilding: document.querySelector('input[name="age_building"]:checked')?.value || '',
+                    facing: document.querySelector('input[name="facing_pill"]:checked')?.value || '', waterSupply: document.querySelector('input[name="water_supply"]:checked')?.value || '',
+                    nonVeg: document.querySelector('input[name="non_veg"]:checked')?.value || '', parkingType: document.querySelector('input[name="parking_type"]:checked')?.value || '',
+                    maintenance: document.getElementById('prop-maintenance').value || '', size: document.getElementById('prop-size').value || '',
+                    carpetArea: document.getElementById('prop-carpet-area').value || '', beds: document.getElementById('prop-beds').value || '0',
+                    baths: document.getElementById('prop-baths').value || '0', balcony: document.getElementById('prop-balcony').value || '0',
+                    kitchens: document.getElementById('prop-kitchens').value || '0', garages: document.getElementById('prop-garages').value || '0',
+                    garageSize: document.getElementById('prop-garage-size').value || '', yearBuilt: document.getElementById('prop-year').value || '',
+                    floorNo: document.getElementById('prop-floors').value || '', totalFloors: document.getElementById('prop-total-floors').value || '',
+                    amenities: amenities, title: document.getElementById('prop-title').value, 
+                    description: document.getElementById('prop-desc').value,
+                    price: document.getElementById('prop-price').value || '0', address: document.getElementById('prop-addr').value, city: document.getElementById('prop-city').value || '',
+                    state: document.getElementById('prop-state').value || '', country: document.getElementById('prop-country').value || '', mapLink: document.getElementById('prop-map-link').value || '',
+                    image: displayImage, coverImage: liveCoverUrl, floorPlans: liveFloorPlans, brochure: liveBrochureUrl, brochureName: currentBrochureName, allImages: liveGallery,
+                    
+                    status: 'pending', 
+                    submittedBy: 'user',
+                    timestamp: new Date().toISOString()
+                };
+
+                const index = parseInt(document.getElementById('edit-index').value);
+
+                if (index === -1) { await window.addDoc(window.collection(window.db, "properties"), propData); } 
+                else { const docId = myProperties[index].id; if(docId) { const docRef = window.doc(window.db, "properties", docId); await window.updateDoc(docRef, propData); } else { await window.addDoc(window.collection(window.db, "properties"), propData); } }
+
+                alert('Property Successfully Submitted! Waiting for Admin Approval.'); await fetchLiveProperties(); showSection('my-properties');
+            } catch (error) { 
+                console.error("Error uploading:", error); 
+                alert("Error saving property: " + (error.message || "Please check console for details.")); 
+            } finally { 
+                submitBtn.innerText = "Submit Property"; submitBtn.disabled = false; 
+            }
+        }
+
+        async function requestDeleteProperty(docId) {
+            if(confirm('Request admin approval to delete this property?')) {
+                try {
+                    const docRef = window.doc(window.db, "properties", docId);
+                    await window.updateDoc(docRef, { status: 'delete_requested' });
+                    alert('Deletion request sent to admin.');
+                    await fetchLiveProperties();
+                } catch(e) {
+                    console.error("Error requesting delete", e);
+                    alert("Error requesting deletion.");
+                }
+            }
+        }
+
+        function renderProperties() {
+            const tbody = document.getElementById('properties-table-body');
+            if(!tbody) return;
+            tbody.innerHTML = myProperties.map((p, i) => {
+                let statusBadge = '';
+                if(p.status === 'pending') statusBadge = `<span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">Pending</span>`;
+                else if(p.status === 'purchased') statusBadge = `<span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">Sold</span>`;
+                else if(p.status === 'draft') statusBadge = `<span class="bg-slate-100 text-slate-800 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">Draft</span>`;
+                else if(p.status === 'delete_requested') statusBadge = `<span class="bg-red-100 text-red-800 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">Delete Pending</span>`;
+                else statusBadge = `<span class="bg-green-100 text-green-800 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">Live</span>`;
+
+                let actionButtons = '';
+                if (p.status === 'delete_requested') {
+                    actionButtons = `
+                        <span class="text-orange-500 font-bold flex items-center transition text-sm mr-4">
+                            <i class="fas fa-hourglass-half mr-1.5"></i> Pending Deletion
+                        </span>
+                        <button class="text-slate-200 cursor-not-allowed text-lg"><i class="far fa-trash-alt"></i></button>
+                    `;
+                } else {
+                    actionButtons = `
+                        <button onclick="editProperty(${i})" class="text-blue-500 hover:text-blue-700 font-bold flex items-center transition text-[15px] mr-4" title="Edit">
+                            <i class="fas fa-edit mr-1.5"></i> Edit
+                        </button>
+                        <button onclick="requestDeleteProperty('${p.id}')" class="text-slate-300 hover:text-red-500 transition text-lg" title="Request Deletion">
+                            <i class="far fa-trash-alt"></i>
+                        </button>
+                    `;
+                }
+
+                return `
+                <tr class="hover:bg-slate-50 transition border-b border-slate-50 group">
+                    <td class="p-5 flex items-center gap-3">
+                        <img src="${p.image || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-lg object-cover border border-slate-200">
+                        <div>
+                            <p class="font-bold text-slate-900 text-[13px] truncate w-48">${p.title}</p>
+                            <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase truncate w-48">${p.address || ''}</p>
+                        </div>
+                    </td>
+                    <td class="p-5">${statusBadge}</td>
+                    <td class="p-5 font-bold text-slate-700">₹${p.price}</td>
+                    <td class="p-5 text-slate-500 text-xs font-medium">${new Date(p.timestamp || Date.now()).toLocaleDateString()}</td>
+                    <td class="p-5 text-right">
+                        <div class="flex items-center justify-end">
+                            ${actionButtons}
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function editProperty(i) {
+            const p = myProperties[i];
+            try {
+                document.getElementById('prop-title').value = p.title; document.getElementById('prop-price').value = p.price;
+                document.getElementById('prop-desc').value = p.description || p.desc || ''; 
+                document.getElementById('prop-contact').value = p.contactNo || ''; document.getElementById('prop-email').value = p.mailId || '';
+                document.getElementById('prop-maintenance').value = p.maintenance || ''; document.getElementById('prop-size').value = p.size || '';
+                document.getElementById('prop-carpet-area').value = p.carpetArea || ''; document.getElementById('prop-beds').value = p.beds || '0';
+                document.getElementById('prop-baths').value = p.baths || '0'; document.getElementById('prop-balcony').value = p.balcony || '0';
+                document.getElementById('prop-kitchens').value = p.kitchens || '0'; document.getElementById('prop-garages').value = p.garages || '0';
+                document.getElementById('prop-garage-size').value = p.garageSize || ''; document.getElementById('prop-year').value = p.yearBuilt || '';
+                document.getElementById('prop-floors').value = p.floorNo || ''; document.getElementById('prop-total-floors').value = p.totalFloors || ''; 
+                document.getElementById('prop-addr').value = p.address || ''; document.getElementById('prop-city').value = p.city || '';
+                document.getElementById('prop-state').value = p.state || ''; document.getElementById('prop-country').value = p.country || '';
+                document.getElementById('prop-map-link').value = p.mapLink || ''; updateMap(); 
+                
+                document.querySelectorAll('.pill-radio input').forEach(r => r.checked = false);
+                const setRadio = (name, val) => { if(val) { let r = document.querySelector(`input[name="${name}"][value="${val}"]`); if(r) r.checked = true; } };
+                setRadio("want_to", p.wantTo); setRadio("prop_type_pill", p.propTypePill); setRadio("config_type", p.configType);
+                setRadio("furnish_type", p.furnishType); setRadio("parking_pill", p.parking); setRadio("age_building", p.ageBuilding);
+                setRadio("facing_pill", p.facing); setRadio("water_supply", p.waterSupply); setRadio("non_veg", p.nonVeg); setRadio("parking_type", p.parkingType);
+
+                document.querySelectorAll('.amenity-cb').forEach(cb => cb.checked = false);
+                if(p.amenities) { p.amenities.forEach(val => { let cb = document.querySelector(`.amenity-cb[value="${val}"]`); if(cb) cb.checked = true; }); }
+
+                document.getElementById('edit-index').value = i; document.getElementById('submit-btn').innerText = "Update Property";
+                currentCoverFile = null; currentCover = p.coverImage || null; currentFloorPlans = p.floorPlans ? p.floorPlans.map(fp => ({ id: 'fp-'+Math.random(), src: fp.src, name: fp.name, isPdf: fp.isPdf })) : []; currentBrochureFile = null; currentBrochure = p.brochure || null; currentBrochureName = p.brochureName || ""; currentUploads = p.allImages ? p.allImages.map(img => ({ id: 'img-'+Math.random(), src: img.src, isVideo: img.isVideo })) : []; renderCover(); renderFloorPlanList(); renderBrochure(); renderUploadList();
+            } catch(e) { console.error("Error setting up edit form:", e); } finally { showSection('add-property'); }
+        }
+    </script>
+</body>
+</html>

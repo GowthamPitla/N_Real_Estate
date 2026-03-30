@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nilaya Realty | Premium Real Estate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAo8Y-hREmsHsiBPVCRMFYHP4Mnd7rHJUc",
+            authDomain: "tox-intl.firebaseapp.com",
+            projectId: "tox-intl",
+            storageBucket: "tox-intl.firebasestorage.app",
+            messagingSenderId: "966798205481",
+            appId: "1:966798205481:web:9bbc3e8f82ed49ef52f238"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.loadedProperties = {};
+
+        async function fetchLiveProperties() {
+            const container = document.getElementById('dynamic-properties-grid');
+            try {
+                const querySnapshot = await getDocs(collection(db, "properties"));
+                let html = ''; let index = 0;
+                
+                querySnapshot.forEach((doc) => {
+                    const p = doc.data();
+                    
+                    // ONLY SHOW APPROVED OR PURCHASED PROPERTIES
+                    if (p.status === 'pending' || p.status === 'draft' || p.status === 'delete_requested') return; 
+                    
+                    const propId = doc.id;
+                    window.loadedProperties[propId] = p;
+                    
+                    const imgTag = (p.image && p.image.includes('video')) ? `<video src="${p.image}" class="w-full h-64 object-cover" muted autoplay loop></video>` : `<img src="${p.image}" class="w-full h-64 object-cover transition duration-700 group-hover:scale-110">`;
+                    const delay = (index % 3) * 150; 
+                    
+                    let soldOverlay = '';
+                    if(p.status === 'purchased') {
+                        soldOverlay = `<div class="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px]"><span class="bg-red-600 text-white font-black text-xl tracking-widest uppercase px-6 py-2 rounded-xl transform -rotate-12 border-4 border-red-600 shadow-2xl">Sold Out</span></div>`;
+                    }
+
+                    html += `
+                    <div class="reveal bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] hover:shadow-[0_10px_40px_-10px_rgba(30,42,94,0.2)] transition-all duration-300 group cursor-pointer flex flex-col relative" style="transition-delay: ${delay}ms;" onclick="showPropertyDetails('${propId}')">
+                        ${soldOverlay}
+                        <div class="relative w-full h-64 overflow-hidden">
+                            ${imgTag}
+                            <div class="absolute top-4 left-4 bg-navy-900/90 backdrop-blur-sm text-white px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider shadow-lg z-10">For ${p.wantTo || 'Sale'}</div>
+                            <div class="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-navy-800 px-4 py-1.5 rounded-full text-sm font-bold shadow-lg z-10">₹${p.price}</div>
+                            <div class="absolute inset-0 bg-gradient-to-t from-navy-900/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-300 z-0"></div>
+                        </div>
+                        
+                        <div class="p-6 flex-1 flex flex-col relative bg-white">
+                            <h3 class="font-bold text-xl text-slate-900 leading-tight truncate mb-2 group-hover:text-navy-800 transition-colors" title="${p.title}">${p.title}</h3>
+                            <p class="text-slate-500 text-sm mb-5 truncate"><i class="fas fa-map-marker-alt mr-1.5 text-gold-500"></i> ${p.address}</p>
+                            <div class="flex items-center justify-between border-t border-slate-100 pt-4 mt-auto">
+                                <div class="flex gap-4 text-slate-600 text-sm font-semibold">
+                                    <span title="Bedrooms" class="flex items-center gap-1.5"><i class="fas fa-bed text-slate-400"></i> ${p.beds || 0}</span>
+                                    <span title="Bathrooms" class="flex items-center gap-1.5"><i class="fas fa-bath text-slate-400"></i> ${p.baths || 0}</span>
+                                    <span title="Square Feet" class="flex items-center gap-1.5"><i class="fas fa-vector-square text-slate-400"></i> ${p.size || 0}</span>
+                                </div>
+                                <div class="text-navy-800 font-bold text-sm flex items-center gap-1 group-hover:text-gold-500 transition-colors transform group-hover:translate-x-1 duration-300">View <i class="fas fa-arrow-right text-xs"></i></div>
+                            </div>
+                        </div>
+                    </div>`;
+                    index++;
+                });
+                
+                if(html === '') { container.innerHTML = '<div class="col-span-full text-center py-20 text-slate-400 font-medium reveal">No properties currently listed. Please check back later.</div>'; } 
+                else { container.innerHTML = html; }
+                initScrollAnimations();
+            } catch (error) { console.error("Error fetching live properties:", error); container.innerHTML = '<div class="col-span-full text-center py-20 text-red-500 reveal">Error connecting to database.</div>'; }
+        }
+        
+        fetchLiveProperties();
+    </script>
+    
+    <script>
+        tailwind.config = { theme: { extend: { colors: { navy: { 800: '#1E2A5E', 900: '#131b3e' }, gold: { 400: '#E6C45A', 500: '#C9A227' }, emerald: { 600: '#0F6A5C', 500: '#3FAF8F' } }, fontFamily: { sans: ['Inter', 'sans-serif'], display: ['General Sans', 'sans-serif'] } } } }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+        .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: #ffffff; color: #1A1A1A; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); will-change: opacity, transform; }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+        .reveal-left { transform: translateX(-40px); } .reveal-right { transform: translateX(40px); } .reveal-scale { transform: scale(0.9); }
+        .reveal-left.active, .reveal-right.active { transform: translateX(0); } .reveal-scale.active { transform: scale(1); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+
+    <header class="fixed top-0 left-0 w-full z-[100] bg-navy-900/85 backdrop-blur-lg border-b border-white/5 px-6 lg:px-12 py-4 flex justify-between items-center transition-all duration-300">
+        <a href="#" onclick="showMainView()" class="flex items-center gap-3 group">
+            <div class="w-10 h-10 bg-white text-navy-900 rounded-[8px] flex items-center justify-center font-black text-xl shadow-md">N</div>
+            <span class="text-white font-display font-bold text-xl tracking-wide group-hover:text-gold-400 transition-colors">Nilaya Realty</span>
+        </a>
+        <nav class="hidden lg:flex items-center gap-8 text-white/90 font-medium text-sm">
+            <a href="#properties-section" class="hover:text-gold-400 transition-colors">Buy</a>
+            <a href="#properties-section" class="hover:text-gold-400 transition-colors">Sell</a>
+            <a href="#properties-section" class="hover:text-gold-400 transition-colors">Rent</a>
+            <a href="#invest-section" class="hover:text-gold-400 transition-colors">Invest</a>
+            <a href="#types-section" class="hover:text-gold-400 transition-colors">Property Types</a>
+        </nav>
+        <div class="flex items-center gap-6">
+            <button onclick="openAuthModal('user')" class="text-white font-medium text-sm hover:text-gold-400 transition">Login</button>
+            <button onclick="openAuthModal('user')" class="bg-[#E6C45A] hover:bg-[#C9A227] text-navy-900 px-5 py-2.5 rounded-md font-semibold text-sm transition-colors hidden sm:block">Post Property</button>
+        </div>
+    </header>
+
+    <div id="main-view" class="fade-in flex flex-col min-h-screen">
+        
+        <div class="relative bg-navy-900 pb-32">
+            <div class="absolute inset-0 overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop" class="w-full h-full object-cover opacity-20 animate-pulse" style="animation-duration: 10s;">
+                <div class="absolute inset-0 bg-gradient-to-b from-navy-900/90 to-navy-800/95"></div>
+            </div>
+
+            <div class="relative z-10 max-w-5xl mx-auto px-6 pt-[140px] pb-12 text-center">
+                <h1 class="reveal text-5xl md:text-7xl font-display font-bold text-white mb-6 leading-tight">Find Where You Truly Belong.</h1>
+                <p class="reveal text-lg md:text-xl text-white/80 mb-12 max-w-2xl mx-auto" style="transition-delay: 150ms;">Discover premium properties with complete transparency and trust.</p>
+                
+                <div class="reveal reveal-scale bg-white rounded-xl p-4 md:p-6 shadow-2xl max-w-4xl mx-auto text-left" style="transition-delay: 300ms;">
+                    <div class="flex flex-wrap gap-2 bg-slate-50 p-1.5 rounded-lg w-max mb-6">
+                        <button class="bg-navy-800 text-white px-6 py-2 rounded-md text-sm font-medium shadow-md">Buy</button>
+                        <a href="#properties-section" class="text-slate-600 px-6 py-2 rounded-md text-sm font-medium hover:bg-white hover:shadow-sm transition">Sell</a>
+                        <a href="#properties-section" class="text-slate-600 px-6 py-2 rounded-md text-sm font-medium hover:bg-white hover:shadow-sm transition">Rent</a>
+                        <a href="#invest-section" class="text-slate-600 px-6 py-2 rounded-md text-sm font-medium hover:bg-white hover:shadow-sm transition">Invest</a>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-slate-50 rounded-lg p-3 px-4 border border-slate-100 flex items-center gap-3 cursor-text hover:border-navy-800/30 transition">
+                            <i class="fas fa-map-marker-alt text-navy-800/50"></i><div class="flex-1 text-slate-400 text-sm">Location...</div>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3 px-4 border border-slate-100 flex items-center gap-3 cursor-text hover:border-navy-800/30 transition">
+                            <i class="fas fa-home text-navy-800/50"></i><div class="flex-1 text-slate-400 text-sm">Property Type...</div>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-3 px-4 border border-slate-100 flex items-center gap-3 cursor-text hover:border-navy-800/30 transition">
+                            <i class="fas fa-wallet text-navy-800/50"></i><div class="flex-1 text-slate-400 text-sm">Budget...</div>
+                        </div>
+                    </div>
+                    <a href="#properties-section" class="block text-center w-full bg-gradient-to-r from-gold-500 to-gold-400 text-white font-bold py-3.5 rounded-lg shadow-md hover:shadow-[0_0_20px_rgba(201,162,39,0.3)] hover:-translate-y-0.5 transition-all">Search Properties</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="reveal reveal-scale bg-white border-b border-slate-100 relative z-20 -mt-16 mx-6 lg:mx-16 rounded-2xl shadow-xl p-8 mb-20" style="transition-delay: 450ms;">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-x divide-slate-100">
+                <div class="group"><div class="w-12 h-12 mx-auto bg-gradient-to-b from-navy-800 to-navy-900 rounded-xl flex items-center justify-center text-white mb-4 shadow-md group-hover:scale-110 transition-transform duration-300"><i class="fas fa-building"></i></div><h3 class="text-3xl font-display font-bold text-navy-800 mb-1">500+</h3><p class="text-slate-500 text-sm">Verified Properties</p></div>
+                <div class="group"><div class="w-12 h-12 mx-auto bg-gradient-to-b from-navy-800 to-navy-900 rounded-xl flex items-center justify-center text-white mb-4 shadow-md group-hover:scale-110 transition-transform duration-300"><i class="fas fa-users"></i></div><h3 class="text-3xl font-display font-bold text-navy-800 mb-1">120+</h3><p class="text-slate-500 text-sm">Happy Investors</p></div>
+                <div class="group"><div class="w-12 h-12 mx-auto bg-gradient-to-b from-navy-800 to-navy-900 rounded-xl flex items-center justify-center text-white mb-4 shadow-md group-hover:scale-110 transition-transform duration-300"><i class="fas fa-handshake"></i></div><h3 class="text-3xl font-display font-bold text-navy-800 mb-1">50+</h3><p class="text-slate-500 text-sm">Developer Partners</p></div>
+                <div class="group"><div class="w-12 h-12 mx-auto bg-gradient-to-b from-navy-800 to-navy-900 rounded-xl flex items-center justify-center text-white mb-4 shadow-md group-hover:scale-110 transition-transform duration-300"><i class="fas fa-chart-line"></i></div><h3 class="text-3xl font-display font-bold text-navy-800 mb-1">₹200Cr+</h3><p class="text-slate-500 text-sm">Property Transactions</p></div>
+            </div>
+        </div>
+
+        <div id="properties-section" class="bg-slate-50 py-20 px-6 lg:px-16 scroll-mt-24">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-12 reveal">
+                    <h2 class="text-4xl font-display font-bold text-navy-800 mb-4">Featured Luxury Properties</h2>
+                    <p class="text-slate-500 text-lg">Handpicked premium properties that redefine luxury living</p>
+                </div>
+                
+                <div id="dynamic-properties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    </div>
+            </div>
+        </div>
+
+        <div id="types-section" class="bg-white py-24 px-6 lg:px-16 scroll-mt-24">
+            <div class="max-w-5xl mx-auto">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-4xl font-display font-bold text-navy-800 mb-4">Explore Property Types</h2>
+                    <p class="text-slate-500 text-lg">Find your perfect property from our diverse portfolio</p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <a href="#properties-section" class="reveal bg-slate-50 rounded-2xl p-8 text-center border border-slate-100 hover:border-navy-800/20 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block" style="transition-delay: 0ms;"><div class="w-16 h-16 mx-auto bg-navy-800/10 rounded-2xl flex items-center justify-center text-navy-800 text-2xl mb-4 group-hover:scale-110 group-hover:bg-navy-800 group-hover:text-white transition duration-300"><i class="fas fa-building"></i></div><h4 class="font-bold text-slate-800 text-lg">Apartments</h4></a>
+                    <a href="#properties-section" class="reveal bg-slate-50 rounded-2xl p-8 text-center border border-slate-100 hover:border-navy-800/20 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block" style="transition-delay: 100ms;"><div class="w-16 h-16 mx-auto bg-navy-800/10 rounded-2xl flex items-center justify-center text-navy-800 text-2xl mb-4 group-hover:scale-110 group-hover:bg-navy-800 group-hover:text-white transition duration-300"><i class="fas fa-home"></i></div><h4 class="font-bold text-slate-800 text-lg">Villas</h4></a>
+                    <a href="#properties-section" class="reveal bg-slate-50 rounded-2xl p-8 text-center border border-slate-100 hover:border-gold-500/20 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block" style="transition-delay: 200ms;"><div class="w-16 h-16 mx-auto bg-gold-500/10 rounded-2xl flex items-center justify-center text-gold-500 text-2xl mb-4 group-hover:scale-110 group-hover:bg-gold-500 group-hover:text-white transition duration-300"><i class="fas fa-vector-square"></i></div><h4 class="font-bold text-slate-800 text-lg">Plots</h4></a>
+                    <a href="#properties-section" class="reveal bg-slate-50 rounded-2xl p-8 text-center border border-slate-100 hover:border-emerald-600/20 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block" style="transition-delay: 300ms;"><div class="w-16 h-16 mx-auto bg-emerald-600/10 rounded-2xl flex items-center justify-center text-emerald-600 text-2xl mb-4 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition duration-300"><i class="fas fa-city"></i></div><h4 class="font-bold text-slate-800 text-lg">Commercial</h4></a>
+                    <a href="#properties-section" class="reveal bg-slate-50 rounded-2xl p-8 text-center border border-slate-100 hover:border-navy-800/20 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block" style="transition-delay: 400ms;"><div class="w-16 h-16 mx-auto bg-navy-800/10 rounded-2xl flex items-center justify-center text-navy-800 text-2xl mb-4 group-hover:scale-110 group-hover:bg-navy-800 group-hover:text-white transition duration-300"><i class="fas fa-gem"></i></div><h4 class="font-bold text-slate-800 text-lg">Luxury Homes</h4></a>
+                    <a href="#properties-section" class="reveal bg-slate-50 rounded-2xl p-8 text-center border border-slate-100 hover:border-emerald-600/20 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block" style="transition-delay: 500ms;"><div class="w-16 h-16 mx-auto bg-emerald-600/10 rounded-2xl flex items-center justify-center text-emerald-600 text-2xl mb-4 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition duration-300"><i class="fas fa-tree"></i></div><h4 class="font-bold text-slate-800 text-lg">Farm Lands</h4></a>
+                </div>
+            </div>
+        </div>
+
+        <div id="invest-section" class="bg-gradient-to-br from-emerald-600 to-emerald-500 py-24 px-6 lg:px-16 relative overflow-hidden scroll-mt-24">
+            <div class="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
+            
+            <div class="max-w-7xl mx-auto relative z-10">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-4xl font-display font-bold text-white mb-4">Real Estate Investment Opportunities</h2>
+                    <p class="text-white/90 text-lg">Discover curated investment opportunities with high growth potential</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="reveal reveal-left bg-white rounded-2xl p-8 shadow-xl hover:-translate-y-2 hover:shadow-2xl transition-all duration-500" style="transition-delay: 0ms;">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 bg-gradient-to-b from-emerald-600 to-emerald-500 rounded-xl flex items-center justify-center text-white"><i class="fas fa-chart-line"></i></div>
+                            <span class="bg-emerald-600/10 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold tracking-wide">High Demand</span>
+                        </div>
+                        <h3 class="font-bold text-xl text-slate-900 mb-6">Premium Apartments - Gachibowli</h3>
+                        <div class="space-y-4 border-b border-slate-100 pb-6 mb-6">
+                            <div class="flex justify-between"><span class="text-slate-500 text-sm">Investment Range</span><span class="font-bold text-sm">₹50L - ₹2Cr</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500 text-sm">Expected ROI</span><span class="font-bold text-emerald-600 text-sm">12-15% Annual Returns</span></div>
+                        </div>
+                        <a href="#properties-section" class="text-emerald-600 font-bold text-sm flex items-center justify-between w-full hover:text-emerald-700 transition group">Learn More <i class="fas fa-arrow-right transform group-hover:translate-x-1 transition"></i></a>
+                    </div>
+                    
+                    <div class="reveal bg-white rounded-2xl p-8 shadow-xl hover:-translate-y-2 hover:shadow-2xl transition-all duration-500" style="transition-delay: 150ms;">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 bg-gradient-to-b from-emerald-600 to-emerald-500 rounded-xl flex items-center justify-center text-white"><i class="fas fa-store"></i></div>
+                            <span class="bg-emerald-600/10 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold tracking-wide">Prime Location</span>
+                        </div>
+                        <h3 class="font-bold text-xl text-slate-900 mb-6">Commercial Spaces - Hi-Tech City</h3>
+                        <div class="space-y-4 border-b border-slate-100 pb-6 mb-6">
+                            <div class="flex justify-between"><span class="text-slate-500 text-sm">Investment Range</span><span class="font-bold text-sm">₹1Cr - ₹5Cr</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500 text-sm">Expected ROI</span><span class="font-bold text-emerald-600 text-sm">10-12% Annual Returns</span></div>
+                        </div>
+                        <a href="#properties-section" class="text-emerald-600 font-bold text-sm flex items-center justify-between w-full hover:text-emerald-700 transition group">Learn More <i class="fas fa-arrow-right transform group-hover:translate-x-1 transition"></i></a>
+                    </div>
+
+                    <div class="reveal reveal-right bg-white rounded-2xl p-8 shadow-xl hover:-translate-y-2 hover:shadow-2xl transition-all duration-500" style="transition-delay: 300ms;">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 bg-gradient-to-b from-emerald-600 to-emerald-500 rounded-xl flex items-center justify-center text-white"><i class="fas fa-gem"></i></div>
+                            <span class="bg-emerald-600/10 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold tracking-wide">Limited Units</span>
+                        </div>
+                        <h3 class="font-bold text-xl text-slate-900 mb-6">Luxury Villas - Kokapet</h3>
+                        <div class="space-y-4 border-b border-slate-100 pb-6 mb-6">
+                            <div class="flex justify-between"><span class="text-slate-500 text-sm">Investment Range</span><span class="font-bold text-sm">₹2Cr - ₹8Cr</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500 text-sm">Expected ROI</span><span class="font-bold text-emerald-600 text-sm">15-18% Annual Returns</span></div>
+                        </div>
+                        <a href="#properties-section" class="text-emerald-600 font-bold text-sm flex items-center justify-between w-full hover:text-emerald-700 transition group">Learn More <i class="fas fa-arrow-right transform group-hover:translate-x-1 transition"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-slate-50 py-24 px-6 lg:px-16 overflow-hidden">
+            <div class="max-w-5xl mx-auto">
+                <div class="text-center mb-20 reveal">
+                    <h2 class="text-4xl font-display font-bold text-navy-800 mb-4">How Nilaya Works</h2>
+                    <p class="text-slate-500 text-lg">Your journey to finding the perfect property in three simple steps</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-12 text-center relative">
+                    <div class="hidden md:block absolute top-12 left-[16%] right-[16%] h-[2px] bg-gradient-to-r from-navy-800 via-gold-500 to-emerald-600 opacity-20 z-0"></div>
+                    <div class="reveal relative z-10 flex flex-col items-center" style="transition-delay: 0ms;"><div class="w-24 h-24 bg-gradient-to-br from-navy-800 to-navy-900 rounded-full flex items-center justify-center text-white text-3xl mb-6 shadow-[0_10px_30px_rgba(30,42,94,0.3)] border-8 border-white hover:scale-110 transition duration-500"><i class="fas fa-search"></i></div><span class="text-gold-500 text-sm font-bold tracking-widest uppercase mb-2">Step 1</span><h3 class="text-xl font-bold text-slate-900 mb-3">Search Properties</h3><p class="text-slate-500 text-sm">Browse through our extensive collection of verified premium properties</p></div>
+                    <div class="reveal relative z-10 flex flex-col items-center" style="transition-delay: 200ms;"><div class="w-24 h-24 bg-gradient-to-br from-gold-500 to-gold-400 rounded-full flex items-center justify-center text-white text-3xl mb-6 shadow-[0_10px_30px_rgba(201,162,39,0.4)] border-8 border-white hover:scale-110 transition duration-500"><i class="fas fa-users"></i></div><span class="text-gold-500 text-sm font-bold tracking-widest uppercase mb-2">Step 2</span><h3 class="text-xl font-bold text-slate-900 mb-3">Connect With Experts</h3><p class="text-slate-500 text-sm">Get personalized guidance from our experienced real estate consultants</p></div>
+                    <div class="reveal relative z-10 flex flex-col items-center" style="transition-delay: 400ms;"><div class="w-24 h-24 bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-full flex items-center justify-center text-white text-3xl mb-6 shadow-[0_10px_30px_rgba(15,106,92,0.3)] border-8 border-white hover:scale-110 transition duration-500"><i class="fas fa-file-signature"></i></div><span class="text-gold-500 text-sm font-bold tracking-widest uppercase mb-2">Step 3</span><h3 class="text-xl font-bold text-slate-900 mb-3">Close Your Deal</h3><p class="text-slate-500 text-sm">Complete your property transaction with full transparency and security</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative bg-[#2D3C7A] py-24 w-full overflow-hidden flex flex-col items-center">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] md:w-[700px] md:h-[700px] border border-white/5 rounded-full pointer-events-none"></div>
+            <div class="absolute -bottom-48 -left-24 w-96 h-96 bg-[#40529A] rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+            <div class="absolute -top-48 -right-24 w-96 h-96 bg-[#40529A] rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+            
+            <div class="relative z-10 text-center px-6 w-full max-w-4xl mx-auto reveal">
+                <div class="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center text-white/90 mx-auto mb-8 backdrop-blur-sm border border-white/10">
+                    <i class="far fa-building text-2xl"></i>
+                </div>
+                
+                <h2 class="text-4xl md:text-5xl font-display font-bold text-white mb-4">Start Your Property Journey Today</h2>
+                <p class="text-white/80 text-lg mb-10 max-w-2xl mx-auto leading-relaxed">Join thousands of satisfied customers who found their dream<br class="hidden md:block"> properties with Nilaya Realty</p>
+                
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <a href="#properties-section" class="bg-[#d9ad3d] hover:bg-[#c29934] text-white px-8 py-3.5 rounded-md text-sm font-medium transition flex items-center justify-center gap-2 shadow-lg">
+                        Explore Properties <i class="fas fa-arrow-right text-xs"></i>
+                    </a>
+                    <button onclick="openAuthModal('user')" class="bg-transparent border border-white hover:bg-white/10 text-white px-8 py-3.5 rounded-md text-sm font-medium transition flex items-center justify-center">
+                        List Your Property
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer id="contact-section" class="bg-[#1C1C1C] pt-16 pb-8 px-6 lg:px-16 font-sans">
+            <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12 border-b border-white/10 pb-16">
+                <div class="lg:col-span-2 reveal reveal-left">
+                    <a href="#" class="flex items-center gap-3 mb-6 group">
+                        <div class="w-7 h-7 bg-[#3451A3] rounded-[4px] flex items-center justify-center text-white font-bold text-xs">N</div>
+                        <span class="text-white font-bold text-lg">Nilaya Realty</span>
+                    </a>
+                    <p class="text-[#A1A1AA] text-sm leading-relaxed mb-8 max-w-sm">Your trusted partner in finding the<br> perfect property across India.</p>
+                    <div class="flex gap-3">
+                        <a href="#" class="w-9 h-9 rounded-full bg-[#27272A] flex items-center justify-center text-[#A1A1AA] hover:text-white transition"><i class="fab fa-facebook-f text-sm"></i></a>
+                        <a href="#" class="w-9 h-9 rounded-full bg-[#27272A] flex items-center justify-center text-[#A1A1AA] hover:text-white transition"><i class="fab fa-twitter text-sm"></i></a>
+                        <a href="#" class="w-9 h-9 rounded-full bg-[#27272A] flex items-center justify-center text-[#A1A1AA] hover:text-white transition"><i class="fab fa-instagram text-sm"></i></a>
+                        <a href="#" class="w-9 h-9 rounded-full bg-[#27272A] flex items-center justify-center text-[#A1A1AA] hover:text-white transition"><i class="fab fa-linkedin-in text-sm"></i></a>
+                    </div>
+                </div>
+                
+                <div class="reveal" style="transition-delay: 100ms;">
+                    <h4 class="text-white font-bold mb-6 text-[15px]">Properties</h4>
+                    <ul class="space-y-4 text-sm text-[#A1A1AA]">
+                        <li><a href="#properties-section" class="hover:text-white transition block">Buy</a></li>
+                        <li><a href="#properties-section" class="hover:text-white transition block">Sell</a></li>
+                        <li><a href="#properties-section" class="hover:text-white transition block">Rent</a></li>
+                        <li><a href="#properties-section" class="hover:text-white transition block">Commercial</a></li>
+                        <li><a href="#invest-section" class="hover:text-white transition block">Investment</a></li>
+                    </ul>
+                </div>
+                
+                <div class="reveal" style="transition-delay: 200ms;">
+                    <h4 class="text-white font-bold mb-6 text-[15px]">Resources</h4>
+                    <ul class="space-y-4 text-sm text-[#A1A1AA]">
+                        <li><a href="#" class="hover:text-white transition block">Insights</a></li>
+                        <li><a href="#" class="hover:text-white transition block">Guides</a></li>
+                        <li><a href="#" class="hover:text-white transition block">Market Reports</a></li>
+                        <li><a href="#" class="hover:text-white transition block">Careers</a></li>
+                        <li><a href="#contact-section" class="hover:text-white transition block">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div class="reveal lg:col-span-1" style="transition-delay: 300ms;">
+                    <h4 class="text-white font-bold mb-6 text-[15px]">Contact Us</h4>
+                    <ul class="space-y-4 text-sm text-[#A1A1AA]">
+                        <li class="flex items-start gap-3"><i class="fas fa-map-marker-alt mt-1 shrink-0"></i> Jubilee Hills, Hyderabad, Telangana</li>
+                        <li class="flex items-center gap-3"><i class="fas fa-phone-alt shrink-0"></i> <a href="tel:+919876543210" class="hover:text-white transition">+91 98765 43210</a></li>
+                        <li class="flex items-center gap-3"><i class="far fa-envelope shrink-0"></i> <a href="mailto:info@nilayarealty.com" class="hover:text-white transition">info@nilayarealty.com</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-[#71717A]">
+                <p>© 2026 Nilaya Realty. All rights reserved.</p>
+                <div class="flex flex-wrap justify-center gap-6">
+                    <a href="#" class="hover:text-white transition">Privacy Policy</a>
+                    <a href="#" class="hover:text-white transition">Terms of Service</a>
+                    <a href="#" class="hover:text-white transition">Cookie Policy</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <div id="detail-view" class="hidden fade-in bg-[#FAFAFA] min-h-screen flex flex-col relative z-0">
+        <div class="sticky top-[100px] z-[90] max-w-7xl mx-auto w-full px-6 flex justify-start pointer-events-none">
+            <button onclick="showMainView()" class="pointer-events-auto bg-white border border-slate-200 text-navy-800 hover:text-primary hover:border-primary px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
+                <i class="fas fa-arrow-left"></i> Back to Properties
+            </button>
+        </div>
+
+        <main class="flex-1 w-full max-w-7xl mx-auto px-6 pt-[20px] pb-24 -mt-[45px]" id="property-modal-content">
+            </main>
+        
+        <footer class="bg-navy-900 py-8 text-center text-white/40 text-sm mt-auto border-t border-slate-800">
+            © 2026 Nilaya Realty. All rights reserved.
+        </footer>
+    </div>
+
+    <div id="auth-modal" class="fixed inset-0 z-[999] bg-navy-900/80 backdrop-blur-sm hidden flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative modal-enter">
+            <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-navy-800 rounded-xl flex items-center justify-center text-white font-black text-3xl shadow-md mx-auto mb-4">N</div>
+                <h2 class="text-2xl font-display font-bold text-slate-900" id="auth-title">Welcome Back</h2>
+                <p class="text-slate-500 text-sm mt-1" id="auth-subtitle">Login to your account</p>
+            </div>
+            <div class="flex bg-slate-100 p-1 rounded-lg mb-6">
+                <button onclick="switchAuthTab('user')" id="tab-user" class="flex-1 py-2 text-sm font-bold rounded-md bg-white text-navy-800 shadow-sm transition-all">User</button>
+                <button onclick="switchAuthTab('admin')" id="tab-admin" class="flex-1 py-2 text-sm font-bold rounded-md text-slate-500 hover:text-navy-800 transition-all">Admin</button>
+            </div>
+            <form id="user-form" onsubmit="handleUserLogin(event)" class="space-y-5">
+                <div><label class="block text-sm font-bold text-slate-700 mb-2">Email Address</label><input type="email" id="user-email" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-navy-800 outline-none transition" placeholder="Enter your email" required></div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-2">Password</label><input type="password" id="user-pass" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-navy-800 outline-none transition" placeholder="Enter password" required></div>
+                <button type="submit" class="w-full bg-[#E6C45A] hover:bg-[#C9A227] text-navy-900 font-bold py-3.5 rounded-lg shadow-md transition-all mt-4 transform hover:-translate-y-0.5">Login & Post Property</button>
+            </form>
+            <form id="admin-form" onsubmit="handleAdminLogin(event)" class="space-y-5 hidden">
+                <div><label class="block text-sm font-bold text-slate-700 mb-2">Admin Username</label><input type="text" id="admin-user" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-navy-800 outline-none transition" placeholder="Enter admin username" required></div>
+                <div><label class="block text-sm font-bold text-slate-700 mb-2">Admin Password</label><input type="password" id="admin-pass" class="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-navy-800 outline-none transition" placeholder="Enter password" required></div>
+                <button type="submit" class="w-full bg-navy-800 text-white font-bold py-3.5 rounded-lg shadow-md hover:bg-navy-900 transition-all mt-4 transform hover:-translate-y-0.5">Login to Dashboard</button>
+                <p id="login-error" class="text-red-500 text-sm font-bold text-center hidden mt-4"><i class="fas fa-exclamation-circle mr-1"></i> Invalid credentials</p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function initScrollAnimations() {
+            const observerOptions = { root: null, rootMargin: '0px 0px -50px 0px', threshold: 0.1 };
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('active'); obs.unobserve(entry.target); } });
+            }, observerOptions);
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        }
+        document.addEventListener('DOMContentLoaded', initScrollAnimations);
+
+        function openAuthModal(type = 'user') { document.getElementById('auth-modal').classList.remove('hidden'); switchAuthTab(type); }
+        function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
+        function switchAuthTab(type) {
+            const userForm = document.getElementById('user-form'); const adminForm = document.getElementById('admin-form');
+            const tabUser = document.getElementById('tab-user'); const tabAdmin = document.getElementById('tab-admin');
+            const title = document.getElementById('auth-title'); const subtitle = document.getElementById('auth-subtitle');
+            document.getElementById('login-error').classList.add('hidden');
+            if(type === 'user') {
+                userForm.classList.remove('hidden'); adminForm.classList.add('hidden');
+                tabUser.className = "flex-1 py-2 text-sm font-bold rounded-md bg-white text-navy-800 shadow-sm transition-all"; tabAdmin.className = "flex-1 py-2 text-sm font-bold rounded-md text-slate-500 hover:text-navy-800 transition-all";
+                title.innerText = "Welcome to Nilaya"; subtitle.innerText = "Login to post and manage your properties";
+            } else {
+                userForm.classList.add('hidden'); adminForm.classList.remove('hidden');
+                tabAdmin.className = "flex-1 py-2 text-sm font-bold rounded-md bg-white text-navy-800 shadow-sm transition-all"; tabUser.className = "flex-1 py-2 text-sm font-bold rounded-md text-slate-500 hover:text-navy-800 transition-all";
+                title.innerText = "Admin Access"; subtitle.innerText = "Authorized personnel only";
+            }
+        }
+
+        function handleUserLogin(e) { e.preventDefault(); sessionStorage.setItem('toxUserAuth', 'true'); window.location.href = 'user-dashboard.html'; }
+        function handleAdminLogin(e) {
+            e.preventDefault(); const user = document.getElementById('admin-user').value; const pass = document.getElementById('admin-pass').value;
+            if (user === 'admin' && pass === 'admin123') { sessionStorage.setItem('toxAdminAuth', 'true'); window.location.href = 'index.html'; } 
+            else { document.getElementById('login-error').classList.remove('hidden'); }
+        }
+
+        function showPropertyDetails(propId) {
+            const p = window.loadedProperties[propId];
+            if(!p) return;
+
+            const mainView = document.getElementById('main-view');
+            const detailView = document.getElementById('detail-view');
+            const contentDiv = document.getElementById('property-modal-content');
+            
+            const imgTag = (p.image && p.image.includes('video')) ? `<video src="${p.image}" class="w-full h-[30rem] lg:h-[35rem] object-cover rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.08)]" muted autoplay loop></video>` : `<img src="${p.image}" class="w-full h-[30rem] lg:h-[35rem] object-cover rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.08)]">`;
+
+            let galleryHtml = '';
+            if(p.allImages && p.allImages.length > 0) {
+                galleryHtml = `<div class="mt-12 reveal"><h4 class="font-display font-bold text-navy-800 mb-6 text-xl">Property Gallery</h4><div class="flex gap-4 overflow-x-auto pb-4 hide-scroll">` + p.allImages.map(img => img.isVideo ? `<video src="${img.src}" class="h-32 w-auto object-cover rounded-xl border border-slate-200 shadow-sm shrink-0" autoplay muted loop></video>` : `<a href="${img.src}" target="_blank"><img src="${img.src}" class="h-32 w-auto object-cover rounded-xl border border-slate-200 shadow-sm shrink-0 hover:opacity-80 transition"></a>`).join('') + `</div></div>`;
+            }
+
+            let amenitiesHtml = '';
+            if(p.amenities && p.amenities.length > 0) {
+                amenitiesHtml = `<div class="mt-12 reveal"><h4 class="font-display font-bold text-navy-800 mb-6 text-xl">Amenities</h4><div class="flex flex-wrap gap-3">` + p.amenities.map(a => `<span class="bg-white border border-slate-100 text-slate-600 px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 hover:shadow-md transition cursor-default"><i class="fas fa-check text-emerald-600 text-sm"></i>${a}</span>`).join('') + `</div></div>`;
+            }
+
+            let fpHtml = '';
+            if(p.floorPlans && p.floorPlans.length > 0) {
+                fpHtml = `<div class="mt-12 reveal"><h4 class="font-display font-bold text-navy-800 mb-6 text-xl">Floor Plans</h4><div class="flex gap-4 overflow-x-auto pb-4 hide-scroll">` + p.floorPlans.map(fp => { if(fp.isPdf) return `<a href="${fp.src}" target="_blank" class="flex flex-col items-center justify-center bg-white border border-slate-200 p-6 rounded-xl min-w-[160px] hover:border-navy-800/30 transition shadow-sm"><i class="fas fa-file-pdf text-red-500 text-4xl mb-3"></i><span class="text-sm font-bold text-slate-600 truncate w-32 text-center" title="${fp.name}">${fp.name}</span></a>`; return `<a href="${fp.src}" target="_blank"><img src="${fp.src}" class="h-48 w-auto object-cover rounded-xl shadow-sm border border-slate-200 hover:opacity-80 transition shrink-0"></a>`; }).join('') + `</div></div>`;
+            }
+
+            const brochureBtn = p.brochure ? `<a href="${p.brochure}" target="_blank" class="w-full bg-[#E6C45A] text-navy-900 px-8 py-3.5 rounded-lg text-sm font-bold hover:bg-[#C9A227] hover:shadow-lg hover:-translate-y-1 transition-all flex items-center justify-center gap-2"><i class="fas fa-file-pdf text-navy-900"></i> Download Brochure</a>` : '';
+
+            const descData = p.description || p.desc || '';
+
+            contentDiv.innerHTML = `
+                <div class="relative w-full mb-10 reveal">
+                    ${imgTag}
+                    <div class="absolute top-6 left-6 bg-navy-900/90 backdrop-blur-md text-white px-6 py-2 rounded-lg text-sm font-bold uppercase tracking-wider shadow-xl">For ${p.wantTo || 'Listing'}</div>
+                </div>
+                
+                <div class="flex flex-col lg:flex-row justify-between items-start gap-8 mb-10 reveal">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="bg-gold-500/20 text-gold-500 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest">${p.propTypePill || 'Property'}</span>
+                            <span class="bg-emerald-600/10 text-emerald-600 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest">${p.configType || '-'}</span>
+                        </div>
+                        <h1 class="font-display font-extrabold text-4xl lg:text-5xl text-slate-900 leading-tight mb-3 tracking-tight">${p.title}</h1>
+                        <p class="text-slate-500 text-[15px] font-medium"><i class="fas fa-map-marker-alt text-gold-500 mr-2 text-lg"></i> ${p.address}</p>
+                    </div>
+                    
+                    <div class="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] min-w-[300px] text-center lg:text-right shrink-0">
+                        <p class="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-2">Asking Price</p>
+                        <span class="text-navy-800 font-display font-extrabold text-4xl block mb-2">₹${p.price}</span>
+                        <p class="text-slate-500 text-xs font-medium">Maintenance: <span class="font-bold text-slate-700">₹${p.maintenance || '0'}/mo</span></p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 reveal">
+                    <div class="bg-white border border-slate-100 p-6 rounded-[20px] shadow-sm flex items-center justify-center md:justify-start gap-4 transition hover:shadow-md">
+                        <div class="w-10 h-10 bg-navy-800/5 rounded-full flex items-center justify-center text-navy-800 text-lg"><i class="fas fa-bed"></i></div>
+                        <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Bedrooms</p><p class="font-bold text-slate-800 text-xl leading-none mt-1">${p.beds || '0'}</p></div>
+                    </div>
+                    <div class="bg-white border border-slate-100 p-6 rounded-[20px] shadow-sm flex items-center justify-center md:justify-start gap-4 transition hover:shadow-md">
+                        <div class="w-10 h-10 bg-navy-800/5 rounded-full flex items-center justify-center text-navy-800 text-lg"><i class="fas fa-bath"></i></div>
+                        <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Bathrooms</p><p class="font-bold text-slate-800 text-xl leading-none mt-1">${p.baths || '0'}</p></div>
+                    </div>
+                    <div class="bg-white border border-slate-100 p-6 rounded-[20px] shadow-sm flex items-center justify-center md:justify-start gap-4 transition hover:shadow-md">
+                        <div class="w-10 h-10 bg-navy-800/5 rounded-full flex items-center justify-center text-navy-800 text-lg"><i class="fas fa-vector-square"></i></div>
+                        <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total Size</p><p class="font-bold text-slate-800 text-xl leading-none mt-1">${p.size || '0'} <span class="text-xs font-medium text-slate-500 normal-case">sqft</span></p></div>
+                    </div>
+                    <div class="bg-white border border-slate-100 p-6 rounded-[20px] shadow-sm flex items-center justify-center md:justify-start gap-4 transition hover:shadow-md">
+                        <div class="w-10 h-10 bg-navy-800/5 rounded-full flex items-center justify-center text-navy-800 text-lg"><i class="fas fa-layer-group"></i></div>
+                        <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Carpet Area</p><p class="font-bold text-slate-800 text-xl leading-none mt-1">${p.carpetArea || '0'} <span class="text-xs font-medium text-slate-500 normal-case">sqft</span></p></div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl p-8 lg:p-10 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.04)] mb-12 reveal border border-slate-100">
+                    <h4 class="font-display font-bold text-navy-800 mb-8 text-xl">Property Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-0 text-sm">
+                        <div class="flex flex-col"><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Furnishing</span><span class="font-bold text-slate-900">${p.furnishType || '-'}</span></div><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Year Built</span><span class="font-bold text-slate-900">${p.yearBuilt || '-'}</span></div><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Floor Number</span><span class="font-bold text-slate-900">${p.floorNo || '-'} (of ${p.totalFloors || '-'})</span></div><div class="flex justify-between py-4"><span class="text-slate-500">Garages</span><span class="font-bold text-slate-900">${p.garages || '0'} (${p.garageSize || '0'} sqft)</span></div></div>
+                        <div class="flex flex-col"><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Facing</span><span class="font-bold text-slate-900">${p.facing || '-'}</span></div><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Water Supply</span><span class="font-bold text-slate-900">${p.waterSupply || '-'}</span></div><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Parking</span><span class="font-bold text-slate-900">${p.parking || '0'} Spots</span></div></div>
+                        <div class="flex flex-col"><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Age</span><span class="font-bold text-slate-900">${p.ageBuilding || '-'}</span></div><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Non-Veg Allowed</span><span class="font-bold text-slate-900">${p.nonVeg || '-'}</span></div><div class="flex justify-between py-4 border-b border-slate-100"><span class="text-slate-500">Parking Type</span><span class="font-bold text-slate-900">${p.parkingType || '-'}</span></div></div>
+                    </div>
+                </div>
+
+                ${descData ? `<div class="mb-12 reveal"><h4 class="font-display font-bold text-navy-800 mb-4 text-xl">Description</h4><p class="text-slate-600 text-sm leading-relaxed whitespace-pre-line bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">${descData}</p></div>` : ''}
+
+                ${amenitiesHtml}
+                ${galleryHtml}
+                ${fpHtml}
+
+                <div class="mt-16 grid grid-cols-1 lg:grid-cols-5 gap-6 reveal">
+                    <div class="lg:col-span-2 bg-gradient-to-br from-navy-800 to-navy-900 rounded-3xl p-8 flex flex-col justify-center text-white shadow-xl relative overflow-hidden">
+                        <div class="absolute -right-10 -top-10 text-9xl text-white/5 pointer-events-none"><i class="fas fa-user-circle"></i></div>
+                        <div class="relative z-10">
+                            <p class="text-gold-500 font-bold uppercase text-[10px] tracking-widest mb-4">Interested in this property?</p>
+                            <h3 class="text-2xl font-display font-bold mb-8">Contact the Owner</h3>
+                            <div class="space-y-6 mb-10">
+                                <a href="tel:${p.contactNo}" class="flex items-center gap-4 group"><div class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-sm group-hover:bg-gold-500 group-hover:text-navy-900 transition-colors"><i class="fas fa-phone-alt"></i></div><span class="text-lg font-semibold group-hover:text-gold-400 transition-colors">${p.contactNo || 'Not Provided'}</span></a>
+                                <a href="mailto:${p.mailId}" class="flex items-center gap-4 group"><div class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-sm group-hover:bg-gold-500 group-hover:text-navy-900 transition-colors"><i class="fas fa-envelope"></i></div><span class="text-lg font-semibold group-hover:text-gold-400 transition-colors">Email Inquiry</span></a>
+                            </div>
+                            ${brochureBtn}
+                        </div>
+                    </div>
+                    <div class="lg:col-span-3 bg-white rounded-3xl p-2 border border-slate-100 shadow-md h-[400px] lg:h-auto">
+                        <iframe width="100%" height="100%" frameborder="0" class="rounded-2xl" allowfullscreen="" aria-hidden="false" tabindex="0" src="https://maps.google.com/maps?q=${encodeURIComponent([p.address, p.city, p.state, p.country].filter(Boolean).join(', '))}&t=&z=14&ie=UTF8&iwloc=&output=embed"></iframe>
+                    </div>
+                </div>
+            `;
+
+            mainView.classList.add('hidden');
+            detailView.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'auto' });
+            setTimeout(() => initScrollAnimations(), 100);
+        }
+
+        function showMainView() {
+            const mainView = document.getElementById('main-view'); const detailView = document.getElementById('detail-view');
+            detailView.classList.add('hidden'); document.getElementById('property-modal-content').innerHTML = ''; mainView.classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
